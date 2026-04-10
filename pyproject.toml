@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traderfactory"
+version = "0.1.0"
+description = "Spec-driven trading bot development workspace for Prosperity-style competitions."
+requires-python = ">=3.11"
+dependencies = [
+  "matplotlib",
+  "numpy",
+]
+
+[project.optional-dependencies]
+legacy-monte-carlo = [
+  "IPython",
+  "jsonpickle",
+  "orjson",
+  "tqdm",
+  "typer",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["trader_factory*"]

@@ -1,0 +1,48 @@
+{
+  "name": "Prosperity",
+  "round_name": "round_0_example",
+  "description": "Example configuration based on the EMERALDS / TOMATOES style round used in the current project history.",
+  "mechanics": [
+    {
+      "name": "anchored",
+      "description": "Price stays near a stable fair value over time.",
+      "tags": ["static_anchor", "stable_fair"]
+    },
+    {
+      "name": "microstructure_alpha",
+      "description": "Short-horizon edge from imbalance, flow, and local directional pressure.",
+      "tags": ["trend", "burst", "flow_sensitive", "latent_fair"]
+    }
+  ],
+  "products": [
+    {
+      "symbol": "EMERALDS",
+      "position_limit": 80,
+      "tick_size": 1.0,
+      "price_regime": "anchored",
+      "execution_style": "mostly_passive",
+      "mechanics": ["anchored", "static_anchor", "book_stable", "market_making", "inventory_sensitive"],
+      "observations": ["returns to one stable fair", "spread capture matters"],
+      "notes": "Start with anchored market making and keep the sleeve simple."
+    },
+    {
+      "symbol": "TOMATOES",
+      "position_limit": 80,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["microstructure_alpha", "trend", "mean_reversion", "latent_fair", "breakout", "inventory_sensitive", "unknown_execution"],
+      "observations": ["range and trend both matter", "execution quality matters strongly"],
+      "notes": "Start with predictive fair plus regime logic, then validate execution transfer separately."
+    }
+  ],
+  "constraints": [
+    "Official simulator behavior is partially hidden.",
+    "Local backtest is useful but not authoritative for passive fill assumptions."
+  ],
+  "research_goals": [
+    "Separate strategy design from execution-model research.",
+    "Use probes when a candidate appears dormant or mis-transfers officially."
+  ]
+}
+

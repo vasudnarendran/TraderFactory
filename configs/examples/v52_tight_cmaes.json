@@ -1,0 +1,65 @@
+{
+  "name": "Traderv52 Tight Follow-Up",
+  "source_bot": "../../../Prosperity/Bots/Traderv52.py",
+  "default_dict_block": "DEFAULT_TOMATOES_PARAMS",
+  "baselines": {
+    "-2": 14803.0,
+    "-1": 15081.0
+  },
+  "search": {
+    "max_iter": 5,
+    "population": 6,
+    "parents": 3,
+    "sigma0": 0.06,
+    "seed": 52,
+    "timeout_seconds": 120
+  },
+  "penalties": {
+    "regression": 3.0,
+    "imbalance": 0.45,
+    "drift": 80.0
+  },
+  "output_prefix": "v52_cmaes_run1",
+  "parameters": [
+    {
+      "name": "SPREAD_INV_COEF",
+      "lower": 0.9,
+      "upper": 1.25
+    },
+    {
+      "name": "RESERVATION_SCALE",
+      "lower": 0.008,
+      "upper": 0.0175
+    },
+    {
+      "name": "BASE_TAKE_EDGE",
+      "lower": 0.48,
+      "upper": 0.72
+    },
+    {
+      "name": "ALPHA_EDGE_SCALE",
+      "lower": 1.35,
+      "upper": 1.72
+    },
+    {
+      "name": "ALPHA_IMBALANCE_SCALE",
+      "lower": 0.48,
+      "upper": 0.74
+    },
+    {
+      "name": "PRESSURE_BIAS_SCALE",
+      "lower": 0.18,
+      "upper": 0.33
+    },
+    {
+      "name": "BREAKOUT_QUOTE_TIGHTEN",
+      "lower": 0.09,
+      "upper": 0.18
+    },
+    {
+      "name": "BREAKOUT_HOLD_BONUS",
+      "lower": 0.05,
+      "upper": 0.11
+    }
+  ]
+}
