@@ -7,6 +7,7 @@ Status note:
 - this document is the long-term architecture target
 - several pieces described here are already implemented
 - for the current implemented state, treat [README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/README.md) and [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md) as the authoritative status documents
+- for the milestone path from current state to full autonomy, treat [docs/AUTONOMY_CHECKLIST.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/AUTONOMY_CHECKLIST.md) as the working checklist
 
 It is based on the material that already exists in:
 
