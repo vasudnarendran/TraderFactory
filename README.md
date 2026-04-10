@@ -50,6 +50,7 @@ The following pieces are already present in this repo scaffold:
 - a workflow definition in [trader_factory/workflows/modes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/modes.py)
 - a local CMA-ES optimization engine in [trader_factory/optimization/cmaes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/optimization/cmaes.py)
 - a local headless Monte Carlo robustness engine in [trader_factory/simulation/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/monte_carlo.py)
+- a local Monte Carlo viewer in [trader_factory/viewer/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/viewer/monte_carlo.py)
 - a reusable execution-probe framework in [trader_factory/probes](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/probes)
 - working deterministic replay and diagnostics engines in:
   - [trader_factory/simulation/deterministic.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/deterministic.py)
@@ -66,9 +67,9 @@ The following pieces are already present in this repo scaffold:
 
 The following major capabilities are not yet fully migrated into this repo, but are documented and intentionally planned:
 
-- legacy Monte Carlo viewer/dashboard extraction
 - historical probe-bot catalog migration beyond the new framework
 - richer code generation from capabilities into production-ready trader sleeves
+- richer optimization tooling beyond the current CMA-ES engine
 
 ## Start Here If You Are New
 
@@ -150,6 +151,7 @@ TraderFactory/
     probes/
     simulation/
     strategies/
+    viewer/
     workflows/
   scripts/
   tests/
@@ -329,6 +331,13 @@ python3 -m trader_factory.cli monte-carlo /absolute/path/to/PrimaryTrader.py --c
 python3 -m trader_factory.cli monte-carlo /absolute/path/to/Trader.py --data-root /absolute/path/to/data
 ```
 
+Viewer:
+
+```bash
+python3 -m trader_factory.cli viewer
+python3 -m trader_factory.cli viewer --results-dir /absolute/path/to/extra_results
+```
+
 CMA-ES:
 
 ```bash
@@ -338,10 +347,11 @@ python3 -m trader_factory.cli cmaes configs/examples/v52_tight_cmaes.json
 Important note:
 
 - the headless Monte Carlo robustness engine is local to TraderFactory
+- the Monte Carlo viewer is local to TraderFactory
 - deterministic replay and Monte Carlo look in `TraderFactory/data/` first, then fall back to the legacy sibling `Prosperity/Data/` path
-- the legacy dashboard/viewer tooling is still separate future work
 - see [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
 - detailed Monte Carlo usage is documented in [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+- viewer usage is documented in [docs/VIEWER.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/VIEWER.md)
 - the CMA-ES engine is local to TraderFactory and documented in [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
 - the probe framework is local to TraderFactory and documented in [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
 - the baseline project generator is documented in [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
@@ -356,6 +366,7 @@ Start with:
 - [docs/TRADER_FACTORY_ARCHITECTURE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE.md)
 - [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
 - [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+- [docs/VIEWER.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/VIEWER.md)
 - [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
 - [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
@@ -455,7 +466,6 @@ The current source repo already contains the raw material.
 
 Highest-priority remaining migrations:
 
-- Monte Carlo viewer from `MonteCarloBacktester/monte_carlo_viewer/`
 - historical probe bot examples from `Research/execution_probes/`
 - richer trader-project generation on top of the current scaffold
 

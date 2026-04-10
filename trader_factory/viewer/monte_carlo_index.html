@@ -1,0 +1,1644 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TraderFactory Monte Carlo Viewer</title>
+  <style>
+    :root {
+      --bg: #030915;
+      --bg-soft: rgba(8, 18, 36, 0.88);
+      --panel: linear-gradient(180deg, rgba(9, 28, 53, 0.92) 0%, rgba(5, 14, 30, 0.92) 100%);
+      --line: rgba(151, 182, 222, 0.24);
+      --text: #edf5ff;
+      --muted: #94a9c8;
+      --accent: #79a8ff;
+      --accent-soft: rgba(121, 168, 255, 0.16);
+      --good: #74f4d0;
+      --good-soft: rgba(116, 244, 208, 0.14);
+      --warn: #f2c775;
+      --shadow: 0 20px 48px rgba(0, 0, 0, 0.42);
+      --radius: 28px;
+      --radius-sm: 20px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: Inter, "Segoe UI", Helvetica, Arial, sans-serif;
+      --display: "Arial Narrow", "Helvetica Neue Condensed", "Franklin Gothic Medium", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(61, 100, 188, 0.25), transparent 20rem),
+        radial-gradient(circle at 80% 20%, rgba(145, 104, 255, 0.15), transparent 22rem),
+        radial-gradient(circle at 15% 85%, rgba(31, 161, 137, 0.14), transparent 18rem),
+        linear-gradient(180deg, #040914 0%, #020611 100%);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    body::before {
+      background:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,0.9) 0 1px, transparent 2px),
+        radial-gradient(circle at 28% 62%, rgba(255,255,255,0.5) 0 1px, transparent 2px),
+        radial-gradient(circle at 76% 32%, rgba(255,255,255,0.7) 0 1px, transparent 2px),
+        radial-gradient(circle at 88% 72%, rgba(255,255,255,0.55) 0 1px, transparent 2px),
+        radial-gradient(circle at 60% 12%, rgba(255,255,255,0.45) 0 1px, transparent 2px);
+      opacity: 0.65;
+    }
+
+    body::after {
+      background:
+        radial-gradient(circle at 50% -20%, rgba(121, 168, 255, 0.2), transparent 28rem),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.0), rgba(0, 0, 0, 0.18));
+    }
+
+    body.sidebar-collapsed .app-shell {
+      grid-template-columns: 76px minmax(0, 1fr);
+    }
+
+    body.sidebar-collapsed .sidebar-title,
+    body.sidebar-collapsed .sidebar-copy,
+    body.sidebar-collapsed .sidebar-tools,
+    body.sidebar-collapsed .test-card .card-body,
+    body.sidebar-collapsed .test-card .compare-label,
+    body.sidebar-collapsed #testList {
+      display: none;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      min-height: 100vh;
+      transition: grid-template-columns 180ms ease;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(5, 16, 34, 0.92) 0%, rgba(3, 9, 23, 0.96) 100%);
+      backdrop-filter: blur(18px);
+      padding: 18px 14px;
+      box-shadow: inset -1px 0 0 rgba(255,255,255,0.05);
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-title {
+      margin: 0;
+      font-size: 1.18rem;
+      line-height: 1.05;
+      font-family: var(--display);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-copy {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.35;
+      margin: 0 0 14px;
+    }
+
+    .icon-button,
+    button,
+    select,
+    input[type="search"] {
+      font: inherit;
+      color: inherit;
+    }
+
+    .icon-button,
+    button {
+      border: 1px solid var(--line);
+      background: rgba(8, 21, 43, 0.82);
+      border-radius: 16px;
+      cursor: pointer;
+      color: var(--text);
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .icon-button:hover,
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(121, 168, 255, 0.12);
+    }
+
+    .icon-button {
+      width: 50px;
+      height: 50px;
+      font-size: 1rem;
+    }
+
+    .sidebar-tools {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    input[type="search"],
+    select {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(5, 18, 37, 0.82);
+      color: var(--text);
+      min-width: 0;
+    }
+
+    input[type="search"]::placeholder {
+      color: rgba(148, 169, 200, 0.72);
+    }
+
+    button.primary {
+      background: linear-gradient(180deg, #4574ff 0%, #204dc4 100%);
+      border-color: var(--accent);
+      color: #fff;
+      padding: 11px 14px;
+    }
+
+    .test-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .test-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(8, 22, 43, 0.92) 0%, rgba(5, 15, 30, 0.92) 100%);
+      box-shadow: var(--shadow);
+      padding: 12px;
+      cursor: pointer;
+    }
+
+    .test-card.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(121, 168, 255, 0.14), var(--shadow);
+    }
+
+    .test-card header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .test-card h3 {
+      margin: 0;
+      font-size: 0.98rem;
+      line-height: 1.18;
+      word-break: break-word;
+    }
+
+    .compare-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .card-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .card-body strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.98rem;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 24px 28px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .topbar {
+      display: grid;
+      gap: 18px;
+    }
+
+    .top-nav {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 999px;
+      background: rgba(13, 28, 53, 0.72);
+      border: 1px solid rgba(151, 182, 222, 0.16);
+      backdrop-filter: blur(12px);
+      width: fit-content;
+    }
+
+    .nav-pill {
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--display);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.82rem;
+      border: 1px solid transparent;
+    }
+
+    .nav-pill.active {
+      color: var(--text);
+      background: linear-gradient(180deg, rgba(48, 97, 170, 0.42), rgba(22, 41, 73, 0.32));
+      border-color: rgba(151, 182, 222, 0.28);
+      box-shadow: inset 0 -2px 0 rgba(255, 239, 176, 0.9);
+    }
+
+    .topbar-headline {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding: 26px 28px;
+      border-radius: 36px;
+      background:
+        linear-gradient(180deg, rgba(37, 83, 138, 0.55) 0%, rgba(8, 22, 43, 0.96) 42%, rgba(4, 11, 24, 0.98) 100%);
+      border: 1px solid rgba(168, 201, 255, 0.24);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .topbar-headline::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 35%, transparent 65%),
+        radial-gradient(circle at 85% 18%, rgba(255,255,255,0.65) 0 2px, transparent 3px),
+        linear-gradient(120deg, transparent 54%, rgba(200, 223, 255, 0.24) 54.4%, rgba(200, 223, 255, 0.12) 65%, transparent 65.4%);
+      pointer-events: none;
+      opacity: 0.65;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 5vw, 4.6rem);
+      line-height: 0.95;
+      font-family: var(--display);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #8db0ff;
+    }
+
+    .topbar p {
+      max-width: 560px;
+      margin: 10px 0 0;
+      color: #c4d5ef;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+
+    .status-stack {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+      text-align: right;
+      position: relative;
+      z-index: 1;
+    }
+
+    .status-label {
+      color: #9db4da;
+      font-family: var(--display);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-size: 0.76rem;
+    }
+
+    .status-value {
+      font-family: var(--display);
+      font-size: 1.85rem;
+      letter-spacing: 0.12em;
+      color: #edf5ff;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      min-width: 0;
+      backdrop-filter: blur(18px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-family: var(--display);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .hero-grid,
+    .metric-grid,
+    .comparison-grid,
+    .session-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero-grid {
+      grid-template-columns: 1.4fr 1fr;
+    }
+
+    .metric-grid {
+      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    }
+
+    .comparison-grid {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .session-grid {
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .stat-card,
+    .compare-card,
+    .session-card,
+    .hero-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, rgba(7, 22, 44, 0.86) 0%, rgba(6, 17, 34, 0.9) 100%);
+      padding: 14px;
+      min-width: 0;
+    }
+
+    .stat-card .label,
+    .compare-card .label {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .stat-card .value,
+    .compare-card .value {
+      margin-top: 8px;
+      font-size: 1.42rem;
+      font-weight: 700;
+      line-height: 1.05;
+    }
+
+    .stat-card .hint,
+    .compare-card .hint,
+    .session-card .hint {
+      margin-top: 6px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .hero-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      line-height: 1.08;
+      word-break: break-word;
+      font-family: var(--display);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-card code {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(121, 168, 255, 0.14);
+      color: #bcd4ff;
+      font-size: 0.8rem;
+      border: 1px solid rgba(121, 168, 255, 0.16);
+    }
+
+    .panel-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .panel-controls label {
+      display: grid;
+      gap: 4px;
+      min-width: 150px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .chart-frame {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(4, 15, 31, 0.95), rgba(3, 10, 23, 0.98)),
+        linear-gradient(90deg, rgba(121,168,255,0.04), transparent);
+      padding: 12px;
+      min-height: 300px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .chart-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: 280px;
+      display: block;
+    }
+
+    .sparkline {
+      margin-top: 10px;
+      width: 100%;
+      height: 58px;
+      display: block;
+    }
+
+    .rank-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: var(--good-soft);
+      color: var(--good);
+      font-weight: 700;
+      font-size: 0.84rem;
+    }
+
+    .score-bar {
+      position: relative;
+      margin-top: 10px;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+
+    .score-bar span {
+      position: absolute;
+      inset: 0 auto 0 0;
+      background: linear-gradient(90deg, #5be6ff 0%, #79a8ff 55%, #91beff 100%);
+      border-radius: inherit;
+      box-shadow: 0 0 18px rgba(91, 230, 255, 0.45);
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 24px;
+      background: rgba(7, 17, 33, 0.65);
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      body.sidebar-collapsed .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      body.sidebar-collapsed .sidebar-title,
+      body.sidebar-collapsed .sidebar-copy,
+      body.sidebar-collapsed .sidebar-tools,
+      body.sidebar-collapsed .test-card .card-body,
+      body.sidebar-collapsed .test-card .compare-label,
+      body.sidebar-collapsed #testList {
+        display: block;
+      }
+
+      .main {
+        padding: 18px;
+      }
+
+      .topbar-headline {
+        padding: 20px;
+      }
+
+      .status-stack {
+        justify-items: start;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div>
+          <h2 class="sidebar-title">TraderFactory</h2>
+          <p class="sidebar-copy">Monte Carlo reports, dashboards, and robustness gates.</p>
+        </div>
+        <button id="sidebarToggle" class="icon-button" title="Collapse sidebar">⇤</button>
+      </div>
+
+      <div class="sidebar-tools">
+        <input id="search" type="search" placeholder="Search test files">
+        <button id="refreshButton" class="primary">Refresh</button>
+      </div>
+
+      <div id="testList" class="test-list"></div>
+    </aside>
+
+    <main class="main">
+      <section class="topbar">
+        <div class="top-nav">
+          <span class="nav-pill">Overview</span>
+          <span class="nav-pill">Challenge</span>
+          <span class="nav-pill">Upload & Log</span>
+          <span class="nav-pill active">Performance</span>
+        </div>
+        <div class="topbar-headline">
+          <div>
+            <h1>Monte Carlo Viewer</h1>
+            <p>Browse TraderFactory Monte Carlo reports, inspect plausible versus stress behavior, and compare candidates against the current baseline without leaving the page.</p>
+          </div>
+          <div class="status-stack">
+            <span class="status-label">Saved Test Files</span>
+            <span id="testCount" class="status-value">0</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="selectedPanel" class="panel"></section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Breakdown</h2>
+            <div class="muted">For dashboard files this shows stored band curves. For report files it switches to sample distributions and family breakdowns.</div>
+          </div>
+          <div class="panel-controls">
+            <label>
+              Focus
+              <select id="chartProduct"></select>
+            </label>
+            <label>
+              Series
+              <select id="chartSeries">
+                <option value="mtmPnl">MtM PnL</option>
+                <option value="fair">Fair</option>
+                <option value="position">Position</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="curvePanel"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Comparison</h2>
+            <div class="muted">Tick compare in the sidebar and rank selected runs by total robustness, profile robustness, or paired deltas.</div>
+          </div>
+          <div class="panel-controls">
+            <label>
+              Scope
+              <select id="compareScope">
+                <option value="total">Total</option>
+                <option value="emerald">EMERALDS</option>
+                <option value="tomato">TOMATOES</option>
+              </select>
+            </label>
+            <label>
+              Metric
+              <select id="compareMetric">
+                <option value="mean">Mean</option>
+                <option value="p05">5th Percentile</option>
+                <option value="p50">Median</option>
+                <option value="p95">95th Percentile</option>
+                <option value="std">Std Dev</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="comparisonPanel"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Sample Highlights</h2>
+            <div class="muted">Quick look at the best and worst stored samples or sessions for the selected result.</div>
+          </div>
+          <div class="panel-controls">
+            <label>
+              Session Metric
+              <select id="sessionMetric">
+                <option value="totalPnl">Total PnL</option>
+                <option value="emeraldPnl">EMERALDS PnL</option>
+                <option value="tomatoPnl">TOMATOES PnL</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="sessionPanel"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      tests: [],
+      filteredTests: [],
+      activeName: null,
+      activeDetail: null,
+      compare: new Set(),
+      chartProduct: "TOMATOES",
+      chartSeries: "mtmPnl",
+      compareScope: "total",
+      compareMetric: "mean",
+      sessionMetric: "totalPnl",
+    };
+
+    function formatNumber(value, digits = 2) {
+      if (value === null || value === undefined || Number.isNaN(value)) return "—";
+      return new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: digits,
+      }).format(value);
+    }
+
+    function formatPercent(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return "—";
+      return `${formatNumber(value * 100, 1)}%`;
+    }
+
+    function formatDate(ms) {
+      if (!ms) return "—";
+      return new Date(ms).toLocaleString();
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function pickMetric(summary, scope, metric) {
+      const block = summary?.[scope];
+      return block?.[metric] ?? null;
+    }
+
+    function isReportSummary(summary) {
+      return summary?.kind === "mc_report";
+    }
+
+    function isReportDetail(detail) {
+      return detail?.kind === "mc_report";
+    }
+
+    function setSelectOptions(select, options, selectedValue) {
+      select.innerHTML = options.map((option) => `
+        <option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? "selected" : ""}>${escapeHtml(option.label)}</option>
+      `).join("");
+      if (!options.find((option) => option.value === selectedValue)) {
+        select.value = options[0]?.value || "";
+      }
+    }
+
+    function percentile(values, fraction) {
+      const nums = values.filter((value) => Number.isFinite(value)).slice().sort((a, b) => a - b);
+      if (!nums.length) return null;
+      const index = (nums.length - 1) * fraction;
+      const low = Math.floor(index);
+      const high = Math.ceil(index);
+      if (low === high) return nums[low];
+      const weight = index - low;
+      return nums[low] * (1 - weight) + nums[high] * weight;
+    }
+
+    function buildLinePath(values, width, height, min, max, paddingX = 0, paddingY = 0) {
+      if (!values || !values.length) return "";
+      const innerWidth = width - paddingX * 2;
+      const innerHeight = height - paddingY * 2;
+      return values.map((value, index) => {
+        const x = paddingX + (innerWidth * index) / Math.max(1, values.length - 1);
+        const ratio = max === min ? 0.5 : (value - min) / (max - min);
+        const y = paddingY + innerHeight - ratio * innerHeight;
+        return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(" ");
+    }
+
+    function buildAreaPath(low, high, width, height, min, max, paddingX = 0, paddingY = 0) {
+      if (!low || !high || !low.length || low.length !== high.length) return "";
+      const innerWidth = width - paddingX * 2;
+      const innerHeight = height - paddingY * 2;
+      const top = high.map((value, index) => {
+        const x = paddingX + (innerWidth * index) / Math.max(1, high.length - 1);
+        const ratio = max === min ? 0.5 : (value - min) / (max - min);
+        const y = paddingY + innerHeight - ratio * innerHeight;
+        return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(" ");
+      const bottom = low.slice().reverse().map((value, reverseIndex) => {
+        const index = low.length - 1 - reverseIndex;
+        const x = paddingX + (innerWidth * index) / Math.max(1, low.length - 1);
+        const ratio = max === min ? 0.5 : (value - min) / (max - min);
+        const y = paddingY + innerHeight - ratio * innerHeight;
+        return `L ${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(" ");
+      return `${top} ${bottom} Z`;
+    }
+
+    function curveSvg(series) {
+      if (!series?.timestamps?.length || !series?.mean?.length) {
+        return `<div class="empty">No curve data stored for this selection.</div>`;
+      }
+      const width = 960;
+      const height = 280;
+      const padX = 20;
+      const padY = 16;
+      const all = [
+        ...series.std3Low || [],
+        ...series.std3High || [],
+        ...series.mean || [],
+      ];
+      const min = Math.min(...all);
+      const max = Math.max(...all);
+      const area3 = buildAreaPath(series.std3Low, series.std3High, width, height, min, max, padX, padY);
+      const area1 = buildAreaPath(series.std1Low, series.std1High, width, height, min, max, padX, padY);
+      const line = buildLinePath(series.mean, width, height, min, max, padX, padY);
+
+      return `
+        <div class="chart-frame">
+          <svg class="chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-label="Monte Carlo curve chart">
+            <rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>
+            <path d="${area3}" fill="rgba(121, 168, 255, 0.12)"></path>
+            <path d="${area1}" fill="rgba(121, 168, 255, 0.26)"></path>
+            <path d="${line}" fill="none" stroke="#8ddfff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>
+          </svg>
+          <div class="chart-caption">
+            <span>Start ${formatNumber(series.mean[0])}</span>
+            <span>End ${formatNumber(series.mean[series.mean.length - 1])}</span>
+            <span>Range ${formatNumber(min)} to ${formatNumber(max)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function tinySparkline(values, color = "#8ddfff") {
+      if (!values || values.length < 2) return "";
+      const width = 280;
+      const height = 58;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const line = buildLinePath(values, width, height, min, max, 4, 4);
+      return `
+        <svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${line}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      `;
+    }
+
+    function distributionSvg(rows, metricKey, label) {
+      const values = rows
+        .map((row) => Number(row?.[metricKey]))
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => a - b);
+      if (!values.length) {
+        return `<div class="empty">No sample distribution data stored for this selection.</div>`;
+      }
+
+      const width = 960;
+      const height = 280;
+      const padX = 20;
+      const padY = 16;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const line = buildLinePath(values, width, height, min, max, padX, padY);
+      const q1 = percentile(values, 0.25);
+      const median = percentile(values, 0.5);
+      const p10 = percentile(values, 0.1);
+      const q3 = percentile(values, 0.75);
+      const areaBase = buildAreaPath(
+        Array(values.length).fill(min),
+        values,
+        width,
+        height,
+        min,
+        max,
+        padX,
+        padY,
+      );
+
+      return `
+        <div class="chart-frame">
+          <svg class="chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-label="Sample distribution chart">
+            <rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>
+            <path d="${areaBase}" fill="rgba(121, 168, 255, 0.10)"></path>
+            <path d="${line}" fill="none" stroke="#8ddfff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>
+          </svg>
+          <div class="chart-caption">
+            <span>${escapeHtml(label)} · samples ${values.length}</span>
+            <span>P10 ${formatNumber(p10)} · median ${formatNumber(median)} · Q3 ${formatNumber(q3)}</span>
+            <span>Range ${formatNumber(min)} to ${formatNumber(max)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function reportSeriesOptions() {
+      return [
+        { value: "total_pnl", label: "Total PnL" },
+        { value: "day_-1_pnl", label: "Day -1 PnL" },
+        { value: "day_-2_pnl", label: "Day -2 PnL" },
+        { value: "total_fills", label: "Total Fills" },
+      ];
+    }
+
+    function dashboardSeriesOptions() {
+      return [
+        { value: "mtmPnl", label: "MtM PnL" },
+        { value: "fair", label: "Fair" },
+        { value: "position", label: "Position" },
+      ];
+    }
+
+    function reportCompareScopes() {
+      return [
+        { value: "total", label: "Primary Overall" },
+        { value: "plausible", label: "Plausible" },
+        { value: "stress", label: "Stress" },
+        { value: "comparison", label: "Delta vs Compare" },
+      ];
+    }
+
+    function reportCompareMetrics(scope) {
+      if (scope === "comparison") {
+        return [
+          { value: "meanDelta", label: "Mean Delta" },
+          { value: "p10Delta", label: "P10 Delta" },
+          { value: "winRate", label: "Win Rate" },
+        ];
+      }
+      return [
+        { value: "mean", label: "Mean" },
+        { value: "p10", label: "P10" },
+        { value: "cvar10", label: "CVaR10" },
+        { value: "std", label: "Std Dev" },
+      ];
+    }
+
+    function dashboardCompareScopes() {
+      return [
+        { value: "total", label: "Total" },
+        { value: "emerald", label: "EMERALDS" },
+        { value: "tomato", label: "TOMATOES" },
+      ];
+    }
+
+    function dashboardCompareMetrics() {
+      return [
+        { value: "mean", label: "Mean" },
+        { value: "p05", label: "5th Percentile" },
+        { value: "p50", label: "Median" },
+        { value: "p95", label: "95th Percentile" },
+        { value: "std", label: "Std Dev" },
+      ];
+    }
+
+    function sessionMetricOptions(detail) {
+      if (isReportDetail(detail)) {
+        return [
+          { value: "total_pnl", label: "Total PnL" },
+          { value: "day_-1_pnl", label: "Day -1 PnL" },
+          { value: "day_-2_pnl", label: "Day -2 PnL" },
+          { value: "total_fills", label: "Total Fills" },
+        ];
+      }
+      return [
+        { value: "totalPnl", label: "Total PnL" },
+        { value: "emeraldPnl", label: "EMERALDS PnL" },
+        { value: "tomatoPnl", label: "TOMATOES PnL" },
+      ];
+    }
+
+    function syncComparisonControls(kind) {
+      const scopeSelect = document.getElementById("compareScope");
+      const metricSelect = document.getElementById("compareMetric");
+      if (kind === "mc_report") {
+        const scopes = reportCompareScopes();
+        setSelectOptions(scopeSelect, scopes, state.compareScope);
+        if (!scopes.find((option) => option.value === state.compareScope)) {
+          state.compareScope = scopes[0].value;
+          scopeSelect.value = state.compareScope;
+        }
+        const metrics = reportCompareMetrics(state.compareScope);
+        setSelectOptions(metricSelect, metrics, state.compareMetric);
+        if (!metrics.find((option) => option.value === state.compareMetric)) {
+          state.compareMetric = metrics[0].value;
+          metricSelect.value = state.compareMetric;
+        }
+        return;
+      }
+
+      const scopes = dashboardCompareScopes();
+      setSelectOptions(scopeSelect, scopes, state.compareScope);
+      if (!scopes.find((option) => option.value === state.compareScope)) {
+        state.compareScope = scopes[0].value;
+        scopeSelect.value = state.compareScope;
+      }
+      const metrics = dashboardCompareMetrics();
+      setSelectOptions(metricSelect, metrics, state.compareMetric);
+      if (!metrics.find((option) => option.value === state.compareMetric)) {
+        state.compareMetric = metrics[0].value;
+        metricSelect.value = state.compareMetric;
+      }
+    }
+
+    function syncBreakdownControls(detail) {
+      const focusSelect = document.getElementById("chartProduct");
+      const seriesSelect = document.getElementById("chartSeries");
+
+      if (!detail) {
+        focusSelect.innerHTML = "";
+        seriesSelect.innerHTML = "";
+        return;
+      }
+
+      if (isReportDetail(detail)) {
+        const bots = Object.keys(detail.report?.monte_carlo || {});
+        const focusOptions = bots.map((bot) => ({ value: bot, label: bot }));
+        if (!focusOptions.find((option) => option.value === state.chartProduct)) {
+          state.chartProduct = focusOptions[0]?.value || "";
+        }
+        setSelectOptions(focusSelect, focusOptions, state.chartProduct);
+        const seriesOptions = reportSeriesOptions();
+        if (!seriesOptions.find((option) => option.value === state.chartSeries)) {
+          state.chartSeries = "total_pnl";
+        }
+        setSelectOptions(seriesSelect, seriesOptions, state.chartSeries);
+        return;
+      }
+
+      const products = Object.keys(detail.dashboard?.bandSeries || {});
+      const focusOptions = products.map((product) => ({ value: product, label: product }));
+      if (!focusOptions.find((option) => option.value === state.chartProduct)) {
+        state.chartProduct = focusOptions[0]?.value || "";
+      }
+      setSelectOptions(focusSelect, focusOptions, state.chartProduct);
+      const seriesOptions = dashboardSeriesOptions();
+      if (!seriesOptions.find((option) => option.value === state.chartSeries)) {
+        state.chartSeries = "mtmPnl";
+      }
+      setSelectOptions(seriesSelect, seriesOptions, state.chartSeries);
+    }
+
+    function syncSessionControls(detail) {
+      const select = document.getElementById("sessionMetric");
+      const options = sessionMetricOptions(detail);
+      if (!options.find((option) => option.value === state.sessionMetric)) {
+        state.sessionMetric = options[0]?.value || "";
+      }
+      setSelectOptions(select, options, state.sessionMetric);
+    }
+
+    async function loadTests() {
+      const payload = await fetchJson("/api/tests");
+      state.tests = payload.tests || [];
+      document.getElementById("testCount").textContent = String(state.tests.length);
+      if (!state.activeName && state.tests.length) {
+        state.activeName = state.tests[0].id;
+      }
+      if (state.activeName && !state.tests.find((item) => item.id === state.activeName)) {
+        state.activeName = state.tests[0]?.id || null;
+        state.activeDetail = null;
+      }
+      filterTests();
+      if (state.activeName) {
+        await loadDetail(state.activeName);
+      } else {
+        render();
+      }
+    }
+
+    async function loadDetail(name) {
+      state.activeName = name;
+      state.activeDetail = await fetchJson(`/api/test?name=${encodeURIComponent(name)}`);
+      render();
+    }
+
+    function filterTests() {
+      const term = document.getElementById("search").value.trim().toLowerCase();
+      state.filteredTests = state.tests.filter((item) => {
+        const haystack = `${item.displayName || item.name} ${item.primaryBot || ""} ${item.compareBot || ""} ${item.sourceLabel || ""}`.toLowerCase();
+        return haystack.includes(term);
+      });
+      renderTestList();
+      renderComparison();
+    }
+
+    function renderTestList() {
+      const root = document.getElementById("testList");
+      if (!state.filteredTests.length) {
+        root.innerHTML = `<div class="empty">No dashboards matched this filter.</div>`;
+        return;
+      }
+
+      root.innerHTML = state.filteredTests.map((item) => {
+        const total = item.total || {};
+        const active = item.id === state.activeName ? "active" : "";
+        const checked = state.compare.has(item.id) ? "checked" : "";
+        const cardGrid = item.kind === "mc_report"
+          ? `
+              <div><strong>${formatNumber(total.mean)}</strong>mean</div>
+              <div><strong>${formatNumber(item.plausible?.mean)}</strong>plausible</div>
+              <div><strong>${formatNumber(item.comparison?.meanDelta)}</strong>delta</div>
+              <div><strong>${item.sessionCount ?? "—"}</strong>samples</div>
+            `
+          : `
+              <div><strong>${formatNumber(total.mean)}</strong>mean</div>
+              <div><strong>${formatNumber(total.p05)}</strong>p05</div>
+              <div><strong>${formatNumber(total.std)}</strong>std</div>
+              <div><strong>${item.sessionCount ?? "—"}</strong>sessions</div>
+            `;
+        return `
+          <article class="test-card ${active}" data-name="${escapeHtml(item.id)}">
+            <header>
+              <h3>${escapeHtml(item.displayName || item.name)}</h3>
+              <label class="compare-toggle">
+                <input type="checkbox" data-compare="${escapeHtml(item.id)}" ${checked}>
+                <span class="compare-label">compare</span>
+              </label>
+            </header>
+            <div class="card-body">
+              ${cardGrid}
+            </div>
+            <div class="hint" style="margin-top:10px; color:var(--muted); font-size:0.78rem;">${escapeHtml(item.sourceLabel || "")}${item.primaryBot ? ` · ${escapeHtml(item.primaryBot)}` : ""}</div>
+          </article>
+        `;
+      }).join("");
+
+      root.querySelectorAll(".test-card").forEach((card) => {
+        card.addEventListener("click", async (event) => {
+          if (event.target.matches('input[type="checkbox"]')) return;
+          await loadDetail(card.dataset.name);
+        });
+      });
+
+      root.querySelectorAll('input[data-compare]').forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) state.compare.add(checkbox.dataset.compare);
+          else state.compare.delete(checkbox.dataset.compare);
+          renderComparison();
+        });
+      });
+    }
+
+    function renderSelectedPanel() {
+      const root = document.getElementById("selectedPanel");
+      const detail = state.activeDetail;
+      if (!detail) {
+        root.innerHTML = `<div class="empty">Pick a dashboard from the sidebar.</div>`;
+        return;
+      }
+
+      if (isReportDetail(detail)) {
+        const summary = detail.summary;
+        const primaryBot = summary.primaryBot || "Primary";
+        const compareBot = summary.compareBot || "—";
+        const primaryFamilies = detail.report?.monte_carlo?.[primaryBot]?.by_family || {};
+        const familyCards = Object.entries(primaryFamilies).map(([family, stats]) => `
+          <div class="stat-card">
+            <div class="label">${escapeHtml(family)}</div>
+            <div class="value">${formatNumber(stats.mean)}</div>
+            <div class="hint">P10 ${formatNumber(stats.p10)} · CVaR10 ${formatNumber(stats.cvar10)} · n ${stats.count ?? "—"}</div>
+          </div>
+        `).join("");
+
+        const baselinePrimary = detail.report?.baseline?.[primaryBot] || {};
+        root.innerHTML = `
+          <div class="hero-grid">
+            <div class="hero-card">
+              <h2>${escapeHtml(summary.displayName || summary.name)}</h2>
+              <div class="muted"><code>${escapeHtml(primaryBot)} vs ${escapeHtml(compareBot)}</code></div>
+              <div class="pill-row">
+                <span class="pill">${summary.sessionCount ?? "—"} samples</span>
+                <span class="pill">${escapeHtml(summary.sourceLabel || "")}</span>
+                <span class="pill">updated ${escapeHtml(formatDate(summary.mtimeMs))}</span>
+              </div>
+            </div>
+            <div class="metric-grid">
+              <div class="stat-card">
+                <div class="label">Baseline Local</div>
+                <div class="value">${formatNumber(summary.baselinePrimary)}</div>
+                <div class="hint">Day -1 ${formatNumber(baselinePrimary?.per_day?.["-1"])} · Day -2 ${formatNumber(baselinePrimary?.per_day?.["-2"])}</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Overall Mean</div>
+                <div class="value">${formatNumber(summary.total?.mean)}</div>
+                <div class="hint">P10 ${formatNumber(summary.total?.p10)} · CVaR10 ${formatNumber(summary.total?.cvar10)}</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Plausible Mean</div>
+                <div class="value">${formatNumber(summary.plausible?.mean)}</div>
+                <div class="hint">P10 ${formatNumber(summary.plausible?.p10)} · CVaR10 ${formatNumber(summary.plausible?.cvar10)}</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Stress Mean</div>
+                <div class="value">${formatNumber(summary.stress?.mean)}</div>
+                <div class="hint">P10 ${formatNumber(summary.stress?.p10)} · CVaR10 ${formatNumber(summary.stress?.cvar10)}</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Mean Delta</div>
+                <div class="value">${formatNumber(summary.comparison?.meanDelta)}</div>
+                <div class="hint">P10 delta ${formatNumber(summary.comparison?.p10Delta)}</div>
+              </div>
+              <div class="stat-card">
+                <div class="label">Win Rate</div>
+                <div class="value">${formatPercent(summary.comparison?.winRate)}</div>
+                <div class="hint">Shared samples ${formatNumber(summary.comparison?.sharedSamples, 0)}</div>
+              </div>
+            </div>
+          </div>
+          ${familyCards ? `<div class="metric-grid" style="margin-top:14px;">${familyCards}</div>` : ""}
+        `;
+        return;
+      }
+
+      const summary = detail.summary;
+      const overall = detail.dashboard.overall || {};
+      const total = overall.totalPnl || {};
+      const emerald = overall.emeraldPnl || {};
+      const tomato = overall.tomatoPnl || {};
+
+      root.innerHTML = `
+        <div class="hero-grid">
+          <div class="hero-card">
+            <h2>${escapeHtml(summary.name)}</h2>
+            <div class="muted"><code>${escapeHtml(summary.algorithmPath || "Unknown algorithm")}</code></div>
+            <div class="pill-row">
+              <span class="pill">${summary.sessionCount ?? "—"} sessions</span>
+              <span class="pill">updated ${escapeHtml(formatDate(summary.mtimeMs))}</span>
+              <span class="pill">${(summary.productNames || []).join(", ")}</span>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="stat-card">
+              <div class="label">Mean Total</div>
+              <div class="value">${formatNumber(total.mean)}</div>
+              <div class="hint">95% CI ${formatNumber(total.meanConfidenceLow95)} to ${formatNumber(total.meanConfidenceHigh95)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">5th Percentile</div>
+              <div class="value">${formatNumber(total.p05)}</div>
+              <div class="hint">Positive ${formatPercent(total.positiveRate)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">EMERALDS Mean</div>
+              <div class="value">${formatNumber(emerald.mean)}</div>
+              <div class="hint">Std ${formatNumber(emerald.std)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">TOMATOES Mean</div>
+              <div class="value">${formatNumber(tomato.mean)}</div>
+              <div class="hint">Std ${formatNumber(tomato.std)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCurvePanel() {
+      const root = document.getElementById("curvePanel");
+      const detail = state.activeDetail;
+      if (!detail) {
+        root.innerHTML = `<div class="empty">No dashboard selected.</div>`;
+        return;
+      }
+
+      syncBreakdownControls(detail);
+
+      if (isReportDetail(detail)) {
+        const bot = state.chartProduct;
+        const metricKey = state.chartSeries;
+        const metricLabel = reportSeriesOptions().find((option) => option.value === metricKey)?.label || metricKey;
+        const rows = (detail.sampleTotals || []).filter((row) => row.bot === bot);
+        if (!rows.length) {
+          root.innerHTML = `<div class="empty">No sample totals were found for this report.</div>`;
+          return;
+        }
+
+        const familyGroups = rows.reduce((acc, row) => {
+          const family = row.family || "unknown";
+          acc[family] = acc[family] || [];
+          acc[family].push(Number(row?.[metricKey]));
+          return acc;
+        }, {});
+
+        const familyCards = Object.entries(familyGroups).map(([family, values]) => {
+          const nums = values.filter((value) => Number.isFinite(value));
+          return `
+            <div class="stat-card">
+              <div class="label">${escapeHtml(family)}</div>
+              <div class="value">${formatNumber(percentile(nums, 0.5))}</div>
+              <div class="hint">Mean ${formatNumber(nums.reduce((sum, value) => sum + value, 0) / Math.max(1, nums.length))} · P10 ${formatNumber(percentile(nums, 0.1))}</div>
+            </div>
+          `;
+        }).join("");
+
+        root.innerHTML = `
+          ${distributionSvg(rows, metricKey, `${bot} · ${metricLabel}`)}
+          <div class="metric-grid" style="margin-top:14px;">
+            ${familyCards}
+          </div>
+        `;
+        return;
+      }
+
+      const bandSeries = detail.dashboard.bandSeries || {};
+      const products = Object.keys(bandSeries);
+      const productData = bandSeries[state.chartProduct] || bandSeries[products[0]] || null;
+      if (!productData) {
+        root.innerHTML = `<div class="empty">No curve data stored for this dashboard.</div>`;
+        return;
+      }
+
+      const series = productData[state.chartSeries];
+      root.innerHTML = curveSvg(series);
+    }
+
+    function renderComparison() {
+      const root = document.getElementById("comparisonPanel");
+      const selected = state.tests.filter((item) => state.compare.has(item.id));
+      if (!selected.length) {
+        root.innerHTML = `<div class="empty">Select tests with the compare checkbox in the sidebar.</div>`;
+        return;
+      }
+
+      const kindSet = new Set(selected.map((item) => item.kind));
+      if (kindSet.size > 1) {
+        root.innerHTML = `<div class="empty">Compare the same result type together. Mixing legacy dashboards and current Monte Carlo reports is not supported in one ranking panel.</div>`;
+        return;
+      }
+
+      const compareKind = selected[0].kind;
+      syncComparisonControls(compareKind);
+
+      const metricLabelMap = compareKind === "mc_report"
+        ? {
+            mean: "Mean",
+            p10: "P10",
+            cvar10: "CVaR10",
+            std: "Std dev",
+            meanDelta: "Mean delta",
+            p10Delta: "P10 delta",
+            winRate: "Win rate",
+          }
+        : {
+            mean: "Mean",
+            p05: "5th percentile",
+            p50: "Median",
+            p95: "95th percentile",
+            std: "Std dev",
+          };
+      const scopeLabelMap = compareKind === "mc_report"
+        ? {
+            total: "Primary overall",
+            plausible: "Plausible",
+            stress: "Stress",
+            comparison: "Delta vs compare",
+          }
+        : {
+            total: "Total",
+            emerald: "EMERALDS",
+            tomato: "TOMATOES",
+          };
+
+      const sorted = selected.slice().sort((a, b) => {
+        const left = pickMetric(a, state.compareScope, state.compareMetric) ?? -Infinity;
+        const right = pickMetric(b, state.compareScope, state.compareMetric) ?? -Infinity;
+        return right - left;
+      });
+
+      const maxAbsValue = Math.max(...sorted.map((item) => Math.abs(pickMetric(item, state.compareScope, state.compareMetric) ?? 0)), 1);
+
+      root.innerHTML = `
+        <div class="comparison-grid">
+          ${sorted.map((item, index) => {
+            const focusValue = pickMetric(item, state.compareScope, state.compareMetric) ?? 0;
+            const totalMean = item.total?.mean ?? null;
+            return `
+              <article class="compare-card">
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+                  <div>
+                    <div class="label">${scopeLabelMap[state.compareScope]} · ${metricLabelMap[state.compareMetric]}</div>
+                    <div class="value">${formatNumber(focusValue)}</div>
+                  </div>
+                  <span class="rank-chip">#${index + 1}</span>
+                </div>
+                <div class="hint">${escapeHtml(item.displayName || item.name)}</div>
+                <div class="score-bar"><span style="width:${(Math.abs(focusValue) / maxAbsValue) * 100}%; background:${focusValue >= 0 ? "linear-gradient(90deg, #5be6ff 0%, #79a8ff 55%, #91beff 100%)" : "linear-gradient(90deg, #f2c775 0%, #ff8b6d 60%, #ff6464 100%)"};"></span></div>
+                <div class="metric-grid" style="margin-top:12px;">
+                  <div class="stat-card">
+                    <div class="label">Total Mean</div>
+                    <div class="value">${formatNumber(totalMean)}</div>
+                  </div>
+                  ${compareKind === "mc_report" ? `
+                    <div class="stat-card">
+                      <div class="label">Plausible Mean</div>
+                      <div class="value">${formatNumber(item.plausible?.mean)}</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="label">Stress Mean</div>
+                      <div class="value">${formatNumber(item.stress?.mean)}</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="label">Win Rate</div>
+                      <div class="value">${formatPercent(item.comparison?.winRate)}</div>
+                    </div>
+                  ` : `
+                    <div class="stat-card">
+                      <div class="label">EMR Mean</div>
+                      <div class="value">${formatNumber(item.emerald?.mean)}</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="label">TOM Mean</div>
+                      <div class="value">${formatNumber(item.tomato?.mean)}</div>
+                    </div>
+                    <div class="stat-card">
+                      <div class="label">Positive</div>
+                      <div class="value">${formatPercent(item.total?.positiveRate)}</div>
+                    </div>
+                  `}
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderSessionPanel() {
+      const root = document.getElementById("sessionPanel");
+      const detail = state.activeDetail;
+      if (!detail) {
+        root.innerHTML = `<div class="empty">No dashboard selected.</div>`;
+        return;
+      }
+
+      syncSessionControls(detail);
+
+      if (isReportDetail(detail)) {
+        const metric = state.sessionMetric;
+        const selectedBot = state.chartProduct || detail.summary.primaryBot;
+        const rows = (detail.sampleTotals || []).filter((row) => row.bot === selectedBot);
+        if (!rows.length) {
+          root.innerHTML = `<div class="empty">No sample totals were found for this report.</div>`;
+          return;
+        }
+
+        const compareBot = selectedBot === detail.summary.primaryBot ? detail.summary.compareBot : detail.summary.primaryBot;
+        const compareMap = new Map(
+          (detail.sampleTotals || [])
+            .filter((row) => row.bot === compareBot)
+            .map((row) => [row.sample_id, row]),
+        );
+
+        const sorted = rows.slice().sort((a, b) => (Number(b?.[metric]) || -Infinity) - (Number(a?.[metric]) || -Infinity));
+        const top = sorted.slice(0, 4);
+        const bottom = sorted.slice(-4).reverse();
+
+        function sampleGroup(title, sessions, tone) {
+          if (!sessions.length) {
+            return `<div class="empty">No stored ${title.toLowerCase()}.</div>`;
+          }
+          return `
+            <div>
+              <h3 style="margin:0 0 10px; font-size:1rem;">${title}</h3>
+              <div class="session-grid">
+                ${sessions.map((session) => {
+                  const compareRow = compareMap.get(session.sample_id);
+                  const delta = compareRow ? (Number(session?.[metric]) - Number(compareRow?.[metric])) : null;
+                  const curve = [session["day_-1_pnl"], session["day_-2_pnl"], session.total_pnl];
+                  const color = tone === "good" ? "#74f4d0" : "#8ddfff";
+                  return `
+                    <article class="session-card">
+                      <div style="display:flex; justify-content:space-between; gap:12px;">
+                        <strong>${escapeHtml(session.sample_id || "sample")}</strong>
+                        <span class="pill">${formatNumber(session?.[metric])}</span>
+                      </div>
+                      <div class="hint">${escapeHtml(session.family || "unknown")} · fills ${formatNumber(session.total_fills, 0)} · d-1 ${formatNumber(session["day_-1_pnl"])} · d-2 ${formatNumber(session["day_-2_pnl"])}${delta === null ? "" : ` · delta ${formatNumber(delta)}`}</div>
+                      ${tinySparkline(curve, color)}
+                    </article>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          `;
+        }
+
+        root.innerHTML = `
+          <div style="display:grid; gap:16px;">
+            ${sampleGroup(`Best ${selectedBot} Samples`, top, "good")}
+            ${sampleGroup(`Worst ${selectedBot} Samples`, bottom, "bad")}
+          </div>
+        `;
+        return;
+      }
+
+      const metric = state.sessionMetric;
+      const top = (detail.dashboard.topSessions || []).slice(0, 4);
+      const bottom = (detail.dashboard.bottomSessions || []).slice(0, 4);
+
+      function sessionGroup(title, sessions, tone) {
+        if (!sessions.length) {
+          return `<div class="empty">No stored ${title.toLowerCase()}.</div>`;
+        }
+        return `
+          <div>
+            <h3 style="margin:0 0 10px; font-size:1rem;">${title}</h3>
+            <div class="session-grid">
+              ${sessions.map((session) => {
+                const curve = [session.totalPnl, session.emeraldPnl, session.tomatoPnl];
+                const color = tone === "good" ? "#74f4d0" : "#8ddfff";
+                return `
+                  <article class="session-card">
+                    <div style="display:flex; justify-content:space-between; gap:12px;">
+                      <strong>${escapeHtml(session.sessionId)}</strong>
+                      <span class="pill">${formatNumber(session[metric])}</span>
+                    </div>
+                    <div class="hint">Total ${formatNumber(session.totalPnl)} · EMR ${formatNumber(session.emeraldPnl)} · TOM ${formatNumber(session.tomatoPnl)}</div>
+                    ${tinySparkline(curve, color)}
+                  </article>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      root.innerHTML = `
+        <div style="display:grid; gap:16px;">
+          ${sessionGroup("Best Sessions", top, "good")}
+          ${sessionGroup("Worst Sessions", bottom, "bad")}
+        </div>
+      `;
+    }
+
+    function render() {
+      syncBreakdownControls(state.activeDetail);
+      syncSessionControls(state.activeDetail);
+      syncComparisonControls(state.activeDetail?.kind === "mc_report" ? "mc_report" : "dashboard");
+      renderTestList();
+      renderSelectedPanel();
+      renderCurvePanel();
+      renderComparison();
+      renderSessionPanel();
+    }
+
+    document.getElementById("refreshButton").addEventListener("click", loadTests);
+    document.getElementById("search").addEventListener("input", filterTests);
+    document.getElementById("chartSeries").addEventListener("change", (event) => {
+      state.chartSeries = event.target.value;
+      renderCurvePanel();
+    });
+    document.getElementById("chartProduct").addEventListener("change", (event) => {
+      state.chartProduct = event.target.value;
+      renderCurvePanel();
+    });
+    document.getElementById("compareScope").addEventListener("change", (event) => {
+      state.compareScope = event.target.value;
+      syncComparisonControls(state.activeDetail?.kind === "mc_report" ? "mc_report" : "dashboard");
+      renderComparison();
+    });
+    document.getElementById("compareMetric").addEventListener("change", (event) => {
+      state.compareMetric = event.target.value;
+      renderComparison();
+    });
+    document.getElementById("sessionMetric").addEventListener("change", (event) => {
+      state.sessionMetric = event.target.value;
+      renderSessionPanel();
+    });
+    document.getElementById("sidebarToggle").addEventListener("click", () => {
+      document.body.classList.toggle("sidebar-collapsed");
+    });
+
+    loadTests().catch((error) => {
+      console.error(error);
+      document.getElementById("selectedPanel").innerHTML =
+        `<div class="empty">Failed to load dashboards. ${escapeHtml(error.message)}</div>`;
+    });
+  </script>
+</body>
+</html>

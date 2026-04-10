@@ -13,6 +13,7 @@ from trader_factory.diagnostics import (
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
 from trader_factory.optimization import run_cmaes
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
+from trader_factory.viewer import run_viewer_server
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,6 +85,18 @@ def build_parser() -> argparse.ArgumentParser:
     scaffold.add_argument("spec", type=Path, help="Path to the competition spec JSON.")
     scaffold.add_argument("--output-dir", type=Path, default=None, help="Optional target project directory.")
     scaffold.add_argument("--name", default=None, help="Optional project name override.")
+
+    viewer = subparsers.add_parser("viewer", help="Run the TraderFactory Monte Carlo viewer.")
+    viewer.add_argument(
+        "--results-dir",
+        type=Path,
+        action="append",
+        dest="results_dirs",
+        default=None,
+        help="Optional result directory root to scan recursively. Can be passed multiple times.",
+    )
+    viewer.add_argument("--host", default="127.0.0.1", help="Host to bind.")
+    viewer.add_argument("--port", type=int, default=8012, help="Port to bind.")
 
     return parser
 
@@ -213,6 +226,10 @@ def main() -> None:
         print(f"Trader: {result.trader_path}")
         print(f"Params: {result.params_path}")
         print(f"Notes: {result.notes_path}")
+        return
+
+    if args.command == "viewer":
+        run_viewer_server(results_dirs=args.results_dirs, host=args.host, port=args.port)
         return
 
     parser.error(f"Unknown command: {args.command}")

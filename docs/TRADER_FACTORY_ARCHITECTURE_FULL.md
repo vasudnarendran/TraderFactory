@@ -2,6 +2,12 @@
 
 This document defines a grounded architecture for a new repo called `TraderFactory`.
 
+Status note:
+
+- this document is the long-term architecture target
+- several pieces described here are already implemented
+- for the current implemented state, treat [README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/README.md) and [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md) as the authoritative status documents
+
 It is based on the material that already exists in:
 
 - `Prosperity`

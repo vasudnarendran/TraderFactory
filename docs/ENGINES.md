@@ -7,6 +7,7 @@ Important status note:
 - deterministic replay is self-contained in this repo and smoke-tested
 - CMA-ES optimization is self-contained in this repo and smoke-tested
 - Monte Carlo robustness is self-contained in this repo and smoke-tested
+- Monte Carlo viewer is self-contained in this repo
 - execution-probe scaffolding is self-contained in this repo
 - official diagnostics are self-contained in this repo and smoke-tested
 - baseline project generation is self-contained in this repo
@@ -36,10 +37,9 @@ So the current local engine stack covers:
 
 - deterministic replay
 - Monte Carlo robustness
+- Monte Carlo viewer
 - CMA-ES optimization
 - official diagnostics
-
-The main remaining simulation-related migration is the old viewer/dashboard layer, not the headless robustness engine.
 
 ## 1. Deterministic Replay
 
@@ -135,11 +135,35 @@ What was validated:
 
 What is not yet migrated:
 
-- viewer/dashboard UI
-- browser/server tooling
 - release/distribution helpers from the old `MonteCarloBacktester` bundle
+- a more general viewer schema for arbitrary future product families
 
-## 4. Official Diagnostics
+## 4. Monte Carlo Viewer
+
+Engine entry points:
+
+- [trader_factory/viewer/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/viewer/monte_carlo.py)
+
+Current CLI:
+
+```bash
+python3 -m trader_factory.cli viewer
+python3 -m trader_factory.cli viewer --results-dir /absolute/path/to/extra_results
+```
+
+Current status:
+
+- the browser viewer is local
+- it scans result roots recursively, so nested `report.json` run folders work
+- it can still read older dashboard JSONs if you point it at those directories
+
+Important scope note:
+
+- the viewer is local to `TraderFactory`
+- but the current UI is still tuned for the existing Prosperity-style report and dashboard schema
+- it is not yet fully generalized for arbitrary future product families
+
+## 5. Official Diagnostics
 
 Engine entry points:
 
@@ -167,7 +191,7 @@ What was validated:
 
 They now write results under `TraderFactory/generated/reports/` instead of forcing the user to inspect `Analysis/output/` manually.
 
-## 5. Probe Framework
+## 6. Probe Framework
 
 Engine entry points:
 
@@ -204,7 +228,7 @@ Important limitation:
 - this is a framework and scaffold, not an automatic source-to-probe transformer
 - actual integration into a baseline submission bot is still intentional manual/agent work
 
-## 6. Project Generation
+## 7. Project Generation
 
 Engine entry points:
 
@@ -246,9 +270,9 @@ What is already local:
 
 What still needs migration:
 
-1. Monte Carlo viewer/dashboard tooling
-2. sweep tooling and additional optimization objectives
-3. historical probe bot examples as reusable templates
-4. richer code generation from capability sets into actual strategy sleeves
+1. sweep tooling and additional optimization objectives
+2. historical probe bot examples as reusable templates
+3. richer code generation from capability sets into actual strategy sleeves
+4. broader viewer/report-schema generalization for future mechanics
 
 That is the remaining path from a solid local toolkit to a full development factory.

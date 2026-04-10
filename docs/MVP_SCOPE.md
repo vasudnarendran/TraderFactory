@@ -9,6 +9,7 @@ The first `TraderFactory` version should not try to do everything.
 - baseline round planning
 - deterministic backtest engine
 - Monte Carlo robustness engine
+- Monte Carlo viewer
 - CMA-ES optimization engine
 - official diagnostics engine
 - probe scaffolding

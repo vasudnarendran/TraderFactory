@@ -44,7 +44,7 @@ It currently supports:
 - paired bot-vs-bot comparison
 - JSON, markdown, and CSV artifact output
 
-It does not depend on the legacy `prosperity4mcbt` CLI or dashboard wrapper for headless runs.
+It does not depend on the legacy `prosperity4mcbt` CLI for headless runs.
 
 ## Scenario Families
 
@@ -95,10 +95,13 @@ What is already local to `TraderFactory`:
 - paired comparison
 - report generation
 
+The browser viewer is now local too:
+
+- [docs/VIEWER.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/VIEWER.md)
+
 What is still not migrated:
 
-- the legacy browser viewer
-- the legacy dashboard server
 - old release-check / distribution tooling from `MonteCarloBacktester`
+- a more general viewer/report schema for arbitrary future product families
 
 Those are separate from the headless robustness engine and should stay separate in future migration work.

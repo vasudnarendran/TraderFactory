@@ -21,16 +21,15 @@ Migrate:
 
 - deterministic backtester from `Backtest_failed_Python/run_backtest.py`
 - headless Monte Carlo robustness from the research workflow
-- Monte Carlo viewer from `MonteCarloBacktester/monte_carlo_viewer/`
 - analyzers from `Analysis/`
 - CMA-ES and sweep tooling from `Analysis/`
 - probe framework from `Research/execution_probes/`
 
 Remaining gaps in this stage:
 
-- Monte Carlo viewer/dashboard UI
 - richer sweep tooling beyond the current CMA-ES engine
 - historical probe bot examples as reusable templates
+- broader viewer/report-schema generalization
 
 ## Stage 3: Normalize Interfaces
 

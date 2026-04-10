@@ -24,3 +24,6 @@ legacy-monte-carlo = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["trader_factory*"]
+
+[tool.setuptools.package-data]
+"trader_factory.viewer" = ["*.html"]
