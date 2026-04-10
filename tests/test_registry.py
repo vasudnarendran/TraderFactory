@@ -13,3 +13,14 @@ def test_registry_returns_anchor_mm_for_anchored_product() -> None:
     names = [cap.name for cap in recommend_capabilities(product)]
     assert "static_anchor_mm" in names
 
+
+def test_registry_does_not_return_probe_suite_without_matching_mechanics() -> None:
+    product = ProductSpec(
+        symbol="TEST",
+        position_limit=10,
+        price_regime="anchored",
+        execution_style="mostly_passive",
+        mechanics=["anchored", "static_anchor", "market_making"],
+    )
+    names = [cap.name for cap in recommend_capabilities(product)]
+    assert "execution_probe_suite" not in names

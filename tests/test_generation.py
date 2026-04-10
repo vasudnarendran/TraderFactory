@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 from trader_factory.generation import scaffold_trader_project
@@ -30,5 +31,13 @@ def test_scaffold_trader_project_creates_expected_files(tmp_path: Path) -> None:
     assert result.trader_path.exists()
     assert result.params_path.exists()
     assert result.plan_path.exists()
+    assert result.experiments_dir.exists()
+    assert result.research_dir.exists()
     assert "class AlphaTrader" in result.trader_path.read_text()
     assert "PRODUCT_LIMITS" in result.params_path.read_text()
+    assert "DEFAULT_ALPHA_PARAMS" in result.trader_path.read_text()
+    assert (result.experiments_dir / "README.md").exists()
+    assert (result.research_dir / "README.md").exists()
+    assert (result.experiments_dir / "cmaes_template_alpha.json").exists()
+    ast.parse(result.trader_path.read_text())
+    ast.parse(result.params_path.read_text())

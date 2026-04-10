@@ -104,12 +104,12 @@ def recommend_capabilities(product: ProductSpec) -> list[StrategyCapability]:
     regime = product.price_regime
     matches: list[tuple[int, StrategyCapability]] = []
     for capability in STRATEGY_REGISTRY:
-        score = 0
-        score += sum(1 for item in capability.applicable_mechanics if item in mechanics)
-        if regime in capability.applicable_regimes or "any" in capability.applicable_regimes:
-            score += 1
+        mechanic_score = sum(1 for item in capability.applicable_mechanics if item in mechanics)
+        regime_score = 1 if (regime in capability.applicable_regimes or "any" in capability.applicable_regimes) else 0
+        score = mechanic_score + regime_score
+        if capability.applicable_mechanics and mechanic_score == 0:
+            score = 0
         if score > 0:
             matches.append((score, capability))
     matches.sort(key=lambda item: (-item[0], item[1].name))
     return [capability for _, capability in matches]
-

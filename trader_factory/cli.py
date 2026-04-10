@@ -226,6 +226,8 @@ def main() -> None:
         print(f"Trader: {result.trader_path}")
         print(f"Params: {result.params_path}")
         print(f"Notes: {result.notes_path}")
+        print(f"Experiments: {result.experiments_dir}")
+        print(f"Research: {result.research_dir}")
         return
 
     if args.command == "viewer":
