@@ -11,6 +11,7 @@ from trader_factory.diagnostics import (
     run_passive_ladder_report,
 )
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
+from trader_factory.official import run_imc_prosperity_submission
 from trader_factory.optimization import run_cmaes
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 from trader_factory.viewer import run_viewer_server
@@ -99,6 +100,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     viewer.add_argument("--host", default="127.0.0.1", help="Host to bind.")
     viewer.add_argument("--port", type=int, default=8012, help="Port to bind.")
+
+    official = subparsers.add_parser("official-submit-imc", help="Submit a bot to IMC Prosperity and collect the result zip.")
+    official.add_argument("bot", type=Path, help="Path to the trader Python file to submit.")
+    official.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+    official.add_argument("--output-dir", type=Path, default=None, help="Optional output directory.")
+    official.add_argument("--chrome-app", default="Google Chrome", help="macOS application name for Chrome.")
+    official.add_argument("--chrome-profile-dir", default="Default", help="Chrome profile directory, default Default.")
+    official.add_argument("--game-url", default="https://prosperity.imc.com/game", help="Prosperity landing page.")
+    official.add_argument(
+        "--api-root",
+        default="https://3dzqiahkw1.execute-api.eu-west-1.amazonaws.com/prod",
+        help="Prosperity API root discovered from the HAR.",
+    )
+    official.add_argument("--poll-seconds", type=float, default=15.0, help="Polling interval while the run is simulating.")
+    official.add_argument("--timeout-seconds", type=float, default=900.0, help="Maximum time to wait for the run.")
+    official.add_argument("--baseline-log", type=Path, default=None, help="Optional baseline official .log for automatic comparison.")
+    official.add_argument("--baseline-json", type=Path, default=None, help="Optional baseline official .json for automatic comparison.")
+    official.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis.")
 
     return parser
 
@@ -241,6 +260,36 @@ def main() -> None:
 
     if args.command == "viewer":
         run_viewer_server(results_dirs=args.results_dirs, host=args.host, port=args.port)
+        return
+
+    if args.command == "official-submit-imc":
+        result = run_imc_prosperity_submission(
+            args.bot,
+            round_id=args.round_id,
+            output_dir=args.output_dir,
+            chrome_app=args.chrome_app,
+            chrome_profile_dir=args.chrome_profile_dir,
+            game_url=args.game_url,
+            api_root=args.api_root,
+            poll_seconds=args.poll_seconds,
+            timeout_seconds=args.timeout_seconds,
+            run_analysis=not args.skip_analysis,
+            baseline_log=args.baseline_log,
+            baseline_json=args.baseline_json,
+        )
+        print(f"Output dir: {result.output_dir}")
+        print(f"Submission id: {result.submission_id}")
+        print(f"Round id: {result.round_id}")
+        print(f"Auth mode: {result.auth_mode}")
+        print(f"ZIP: {result.zip_path}")
+        if result.python_path:
+            print(f"Bot copy: {result.python_path}")
+        if result.json_path:
+            print(f"JSON: {result.json_path}")
+        if result.log_path:
+            print(f"LOG: {result.log_path}")
+        if result.analysis_result and result.analysis_result.summary_path:
+            print(f"Analysis summary: {result.analysis_result.summary_path}")
         return
 
     parser.error(f"Unknown command: {args.command}")

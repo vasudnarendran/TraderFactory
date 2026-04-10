@@ -52,6 +52,7 @@ The following pieces are already present in this repo scaffold:
 - a local CMA-ES optimization engine in [trader_factory/optimization/cmaes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/optimization/cmaes.py)
 - a local headless Monte Carlo robustness engine in [trader_factory/simulation/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/monte_carlo.py)
 - a local Monte Carlo viewer in [trader_factory/viewer/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/viewer/monte_carlo.py)
+- a first official submission automation path in [trader_factory/official/imc_prosperity.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/official/imc_prosperity.py)
 - a reusable execution-probe framework in [trader_factory/probes](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/probes)
 - a capability-aware project generator in [trader_factory/generation/project.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/project.py)
 - working deterministic replay and diagnostics engines in:
@@ -90,6 +91,7 @@ If you are a new teammate or a new coding agent, read these in order:
 11. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
 12. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
 13. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
+14. [docs/OFFICIAL_AUTOMATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OFFICIAL_AUTOMATION.md)
 
 If you only read one technical reference after this README, read the full architecture doc.
 
