@@ -29,12 +29,14 @@ def build_parser() -> argparse.ArgumentParser:
     deterministic.add_argument("--day", type=int, default=-1, help="Day to replay.")
     deterministic.add_argument("--output", type=Path, default=None, help="Optional output directory.")
     deterministic.add_argument("--data-root", type=Path, default=None, help="Optional replay data directory override.")
+    deterministic.add_argument("--dataset-tag", default=None, help="Optional replay dataset tag override.")
 
     monte = subparsers.add_parser("monte-carlo", help="Run TraderFactory headless Monte Carlo robustness.")
     monte.add_argument("bot", type=Path, help="Path to the trader Python file.")
     monte.add_argument("--compare-bot", type=Path, default=None, help="Optional comparison trader Python file.")
     monte.add_argument("--output-dir", type=Path, default=None, help="Optional output directory.")
     monte.add_argument("--data-root", type=Path, default=None, help="Optional replay data directory override.")
+    monte.add_argument("--dataset-tag", default=None, help="Optional replay dataset tag override.")
     monte.add_argument("--days", type=int, nargs="*", default=[-1, -2], help="Replay days to include.")
     monte.add_argument("--samples-per-family", type=int, default=4, help="Monte Carlo samples per family.")
     monte.add_argument("--families", nargs="*", default=None, help="Optional family subset.")
@@ -78,7 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe.add_argument("baseline_bot", type=Path, help="Baseline bot file the probe is built around.")
     probe.add_argument("--name", default=None, help="Optional probe workspace name.")
     probe.add_argument("--output-dir", type=Path, default=None, help="Optional workspace directory override.")
-    probe.add_argument("--product", default="TOMATOES", help="Primary product symbol for the probe.")
+    probe.add_argument("--product", default="PRIMARY_PRODUCT", help="Primary product symbol for the probe.")
     probe.add_argument("--context", default=None, help="Optional probe context label, mainly for aggressive probes.")
 
     scaffold = subparsers.add_parser("scaffold-project", help="Generate a baseline trader project from a competition spec.")
@@ -118,7 +120,13 @@ def main() -> None:
     if args.command == "deterministic":
         from trader_factory.simulation import run_deterministic
 
-        result = run_deterministic(args.bot, day=args.day, output_dir=args.output, data_root=args.data_root)
+        result = run_deterministic(
+            args.bot,
+            day=args.day,
+            output_dir=args.output,
+            data_root=args.data_root,
+            dataset_tag=args.dataset_tag,
+        )
         print(f"Output dir: {result.output_dir}")
         print(f"Summary: {result.summary_path}")
         print(f"Final total PnL: {result.final_total_pnl}")
@@ -132,6 +140,7 @@ def main() -> None:
             compare_bot_path=args.compare_bot,
             output_dir=args.output_dir,
             data_root=args.data_root,
+            dataset_tag=args.dataset_tag,
             days=tuple(args.days),
             samples_per_family=args.samples_per_family,
             families=args.families,

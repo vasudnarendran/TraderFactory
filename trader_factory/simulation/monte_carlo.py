@@ -745,6 +745,7 @@ def run_monte_carlo(
     compare_bot_path: str | Path | None = None,
     output_dir: str | Path | None = None,
     data_root: str | Path | None = None,
+    dataset_tag: str | None = None,
     days: tuple[int, ...] | list[int] = (-1, -2),
     samples_per_family: int = 4,
     families: list[str] | tuple[str, ...] | None = None,
@@ -776,10 +777,12 @@ def run_monte_carlo(
     ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass = ib.ensure_imports(primary_bot)
     datamodel = (ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass)
     resolved_data_root = ib.resolve_data_dir(data_root)
+    resolved_dataset_tag = ib.resolve_dataset_tag(resolved_data_root, dataset_tag)
     prices_by_key, market_trades_by_day, listings, ordered_keys = ib.load_market(
         ListingClass,
         TradeClass,
         resolved_data_root,
+        resolved_dataset_tag,
         day_filter=None,
     )
     ordered_days = tuple(days)

@@ -18,7 +18,7 @@ What you need to run the engines:
 
 - deterministic replay and Monte Carlo:
   - a trader Python file
-  - replay CSVs named like `prices_round_0_day_-1.csv` and `trades_round_0_day_-1.csv`
+  - replay CSVs named like `prices_<dataset_tag>_day_<day>.csv` and `trades_<dataset_tag>_day_<day>.csv`
 - official diagnostics:
   - official `.log`
   - sometimes official `.json`
@@ -53,6 +53,7 @@ Current CLI:
 
 ```bash
 python3 -m trader_factory.cli deterministic /path/to/Trader.py --day -1
+python3 -m trader_factory.cli deterministic /path/to/Trader.py --day -1 --data-root /path/to/data --dataset-tag round_0
 ```
 
 What it returns:
@@ -119,6 +120,7 @@ Current CLI:
 ```bash
 python3 -m trader_factory.cli monte-carlo /path/to/Trader.py
 python3 -m trader_factory.cli monte-carlo /path/to/PrimaryTrader.py --compare-bot /path/to/BaselineTrader.py
+python3 -m trader_factory.cli monte-carlo /path/to/Trader.py --data-root /path/to/data --dataset-tag round_0
 ```
 
 Current status:

@@ -237,7 +237,7 @@ def scaffold_probe_workspace(
     *,
     probe_name: str | None = None,
     output_dir: str | Path | None = None,
-    product: str = "TOMATOES",
+    product: str = "PRIMARY_PRODUCT",
     context: str | None = None,
 ) -> ProbeWorkspaceResult:
     if spec_name not in PROBE_LIBRARY:

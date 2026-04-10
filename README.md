@@ -275,6 +275,8 @@ It describes a simple EMERALDS / TOMATOES style round using structured fields:
 - execution style
 - mechanics
 
+That file is only the bundled example. The framework itself is intended to stay product-agnostic and mechanic-driven.
+
 ### 2. Run the planning CLI
 
 From the `TraderFactory` folder:

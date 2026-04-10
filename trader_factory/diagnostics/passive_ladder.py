@@ -164,7 +164,7 @@ def main() -> None:
         fill_ts = int(row["fill_ts"])
         price = float(row["price"])
         side = str(row["side"])
-        product = str(row.get("p", "TOMATOES"))
+        product = str(row.get("p", "UNKNOWN_PRODUCT"))
         snapshot = snapshots.get((fill_ts, product), {})
         enriched = dict(row)
         enriched["best_bid_fill"] = snapshot.get("best_bid")

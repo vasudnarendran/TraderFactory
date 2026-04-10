@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 import math
+import re
 import shutil
 import sys
 from collections import defaultdict
@@ -27,6 +28,8 @@ LOCAL_DATA_DIR = REPO_ROOT / "data"
 LEGACY_DATA_DIR = PROJECTS_ROOT / "Prosperity" / "Data"
 DATAMODEL_PATH = REPO_ROOT / "trader_factory" / "core" / "datamodel.py"
 DENOMINATION = "XIRECS"
+PRICE_FILE_RE = re.compile(r"^prices_(.+)_day_(-?\d+)\.csv$")
+TRADE_FILE_RE = re.compile(r"^trades_(.+)_day_(-?\d+)\.csv$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,27 +43,44 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         default="",
-        help="Optional output directory. If omitted, results go to Backtest/output/<bot_name>/",
+        help="Optional output directory. If omitted, results go to TraderFactory/generated/runs/deterministic/<bot_name>/",
     )
     parser.add_argument(
         "--day",
         type=int,
         default=-1,
-        help="Which day file to run. Default matches the official round-0 site logs: -1",
+        help="Which day file to run. Default is -1 for compatibility with existing Prosperity-style datasets.",
     )
     parser.add_argument(
         "--data-root",
         default="",
         help=(
-            "Optional directory containing prices_round_0_day_*.csv and trades_round_0_day_*.csv. "
-            "If omitted, TraderFactory tries repo-local data/ first, then the legacy sibling Prosperity/Data path."
+            "Optional directory containing prices_<dataset_tag>_day_<day>.csv and "
+            "trades_<dataset_tag>_day_<day>.csv. If omitted, TraderFactory tries repo-local "
+            "data/ first, then the legacy sibling Prosperity/Data path."
+        ),
+    )
+    parser.add_argument(
+        "--dataset-tag",
+        default="",
+        help=(
+            "Optional dataset tag used in filenames like prices_<dataset_tag>_day_<day>.csv. "
+            "Required only if the data directory contains multiple datasets."
         ),
     )
     return parser.parse_args()
 
 
 def _looks_like_data_dir(path: Path) -> bool:
-    return any(path.glob("prices_round_0_day_*.csv")) and any(path.glob("trades_round_0_day_*.csv"))
+    return any(PRICE_FILE_RE.match(file.name) for file in path.iterdir() if file.is_file()) and any(
+        TRADE_FILE_RE.match(file.name) for file in path.iterdir() if file.is_file()
+    )
+
+
+def _discover_dataset_tags(path: Path) -> list[str]:
+    price_tags = {match.group(1) for file in path.iterdir() if file.is_file() for match in [PRICE_FILE_RE.match(file.name)] if match}
+    trade_tags = {match.group(1) for file in path.iterdir() if file.is_file() for match in [TRADE_FILE_RE.match(file.name)] if match}
+    return sorted(price_tags & trade_tags)
 
 
 def resolve_data_dir(data_root: str | Path | None = None) -> Path:
@@ -70,7 +90,8 @@ def resolve_data_dir(data_root: str | Path | None = None) -> Path:
             raise FileNotFoundError(f"Data directory does not exist: {candidate}")
         if not _looks_like_data_dir(candidate):
             raise FileNotFoundError(
-                f"Data directory {candidate} does not contain prices_round_0_day_*.csv and trades_round_0_day_*.csv"
+                f"Data directory {candidate} does not contain prices_<dataset_tag>_day_<day>.csv "
+                "and trades_<dataset_tag>_day_<day>.csv"
             )
         return candidate
 
@@ -81,6 +102,23 @@ def resolve_data_dir(data_root: str | Path | None = None) -> Path:
     raise FileNotFoundError(
         "Could not find replay data. Place Prosperity CSVs under TraderFactory/data/ "
         "or pass --data-root explicitly."
+    )
+
+
+def resolve_dataset_tag(data_dir: Path, dataset_tag: str | None = None) -> str:
+    tags = _discover_dataset_tags(data_dir)
+    if dataset_tag:
+        if dataset_tag not in tags:
+            raise FileNotFoundError(
+                f"Dataset tag {dataset_tag!r} not found in {data_dir}. Available tags: {', '.join(tags) or '(none)'}"
+            )
+        return dataset_tag
+    if len(tags) == 1:
+        return tags[0]
+    if not tags:
+        raise FileNotFoundError(f"No replay datasets found in {data_dir}")
+    raise ValueError(
+        f"Multiple dataset tags found in {data_dir}: {', '.join(tags)}. Pass --dataset-tag explicitly."
     )
 
 
@@ -242,21 +280,29 @@ def parse_trade_file(path: Path, TradeClass) -> Dict[Tuple[int, str], List]:
     return trades
 
 
-def load_market(ListingClass, TradeClass, data_dir: Path, day_filter: Optional[int] = None):
+def load_market(ListingClass, TradeClass, data_dir: Path, dataset_tag: str, day_filter: Optional[int] = None):
     prices_by_key: Dict[Tuple[int, int], Dict[str, Snapshot]] = {}
     market_trades_by_day: Dict[int, Dict[Tuple[int, str], List]] = {}
 
-    for price_path in sorted(data_dir.glob("prices_round_0_day_*.csv")):
-        day = int(price_path.stem.split("_")[-1])
+    for price_path in sorted(data_dir.iterdir()):
+        if not price_path.is_file():
+            continue
+        match = PRICE_FILE_RE.match(price_path.name)
+        if not match or match.group(1) != dataset_tag:
+            continue
+        day = int(match.group(2))
         if day_filter is not None and day != day_filter:
             continue
         file_prices = parse_price_file(price_path)
         prices_by_key.update(file_prices)
 
-    for trade_path in sorted(data_dir.glob("trades_round_0_day_*.csv")):
-        # day is encoded in the filename suffix
-        stem = trade_path.stem
-        day = int(stem.split("_")[-1])
+    for trade_path in sorted(data_dir.iterdir()):
+        if not trade_path.is_file():
+            continue
+        match = TRADE_FILE_RE.match(trade_path.name)
+        if not match or match.group(1) != dataset_tag:
+            continue
+        day = int(match.group(2))
         if day_filter is not None and day != day_filter:
             continue
         market_trades_by_day[day] = parse_trade_file(trade_path, TradeClass)
@@ -468,10 +514,12 @@ def main() -> None:
     trader = load_trader(bot_path)
 
     data_dir = resolve_data_dir(args.data_root or None)
+    dataset_tag = resolve_dataset_tag(data_dir, args.dataset_tag or None)
     prices_by_key, market_trades_by_day, listings, ordered_keys = load_market(
         ListingClass,
         TradeClass,
         data_dir,
+        dataset_tag,
         args.day,
     )
     products = sorted(listings.keys())
@@ -706,7 +754,8 @@ def main() -> None:
         f"Bot file: {bot_path}",
         f"Datamodel: {DATAMODEL_PATH}",
         f"Day filter: {args.day}",
-        f"Data sources: {data_dir / f'prices_round_0_day_{args.day}.csv'} and {data_dir / f'trades_round_0_day_{args.day}.csv'}",
+        f"Dataset tag: {dataset_tag}",
+        f"Data sources: {data_dir / f'prices_{dataset_tag}_day_{args.day}.csv'} and {data_dir / f'trades_{dataset_tag}_day_{args.day}.csv'}",
         f"Steps: {len(step_rows)}",
         f"Total fills: {len(fill_rows)}",
         f"Final total PnL: {total_pnl_series[-1]:.2f}" if total_pnl_series else "Final total PnL: 0.00",
