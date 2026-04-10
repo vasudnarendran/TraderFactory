@@ -12,6 +12,7 @@ class ProductBuildPlan:
     regime: str
     execution_style: str
     recommended_capabilities: list[str] = field(default_factory=list)
+    capability_details: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
 
@@ -40,6 +41,10 @@ def build_round_plan(spec: CompetitionSpec) -> RoundBuildPlan:
                 regime=product.price_regime,
                 execution_style=product.execution_style,
                 recommended_capabilities=[cap.name for cap in recommendations],
+                capability_details=[
+                    f"{cap.name} [{', '.join(cap.families) or 'unclassified'} / {cap.readiness}] - {cap.summary}"
+                    for cap in recommendations
+                ],
                 notes=notes,
             )
         )
@@ -74,9 +79,10 @@ def render_markdown_plan(spec: CompetitionSpec) -> str:
         lines.append(f"- Regime: `{product.regime}`")
         lines.append(f"- Execution style: `{product.execution_style}`")
         lines.append("- Recommended capabilities:")
-        if product.recommended_capabilities:
-            for name in product.recommended_capabilities:
-                lines.append(f"  - `{name}`")
+        if product.capability_details:
+            for detail in product.capability_details:
+                name, rest = detail.split(" ", 1)
+                lines.append(f"  - `{name}` {rest}")
         else:
             lines.append("  - none matched; manual review needed")
         lines.append("- Notes:")
@@ -87,4 +93,3 @@ def render_markdown_plan(spec: CompetitionSpec) -> str:
     for note in plan.global_notes:
         lines.append(f"- {note}")
     return "\n".join(lines) + "\n"
-

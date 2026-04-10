@@ -45,6 +45,7 @@ The following pieces are already present in this repo scaffold:
 
 - a core spec schema in [trader_factory/core/specs.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/specs.py)
 - a strategy capability registry in [trader_factory/core/registry.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/registry.py)
+- a structured strategy-family taxonomy in [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
 - a baseline planning layer in [trader_factory/generation/bootstrap.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/bootstrap.py)
 - a minimal CLI in [trader_factory/cli.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/cli.py)
 - a workflow definition in [trader_factory/workflows/modes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/modes.py)
@@ -80,14 +81,15 @@ If you are a new teammate or a new coding agent, read these in order:
 2. [docs/WORKFLOW.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/WORKFLOW.md)
 3. [docs/TRADER_FACTORY_ARCHITECTURE_FULL.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE_FULL.md)
 4. [references/SOURCE_MAP.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/SOURCE_MAP.md)
-5. [references/Strategies.txt](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/Strategies.txt)
-6. [references/PUBLIC_STRATEGY_RESEARCH.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/PUBLIC_STRATEGY_RESEARCH.md)
-7. [references/execution_probes/DISCOVERIES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/execution_probes/DISCOVERIES.md)
-8. [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
-9. [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
-10. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
-11. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
-12. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
+5. [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
+6. [references/Strategies.txt](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/Strategies.txt)
+7. [references/PUBLIC_STRATEGY_RESEARCH.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/PUBLIC_STRATEGY_RESEARCH.md)
+8. [references/execution_probes/DISCOVERIES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/execution_probes/DISCOVERIES.md)
+9. [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
+10. [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
+11. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+12. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
+13. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
 If you only read one technical reference after this README, read the full architecture doc.
 

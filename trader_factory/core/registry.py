@@ -9,6 +9,8 @@ from trader_factory.core.specs import ProductSpec
 class StrategyCapability:
     name: str
     summary: str
+    families: list[str] = field(default_factory=list)
+    readiness: str = "factory_ready"
     applicable_mechanics: list[str] = field(default_factory=list)
     applicable_regimes: list[str] = field(default_factory=list)
     outputs: list[str] = field(default_factory=list)
@@ -19,6 +21,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="static_anchor_mm",
         summary="Anchored market making around a fixed or very slow fair value.",
+        families=["fair_value_and_mean_reversion", "market_making_and_quoting"],
+        readiness="factory_ready",
         applicable_mechanics=["static_anchor", "anchored", "stable_fair"],
         applicable_regimes=["anchored", "stationary"],
         outputs=["fair_value", "quotes", "inventory_recycling"],
@@ -27,6 +31,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="join_improve_mm",
         summary="Join or improve the touch when book structure is stable and spread capture matters.",
+        families=["market_making_and_quoting"],
+        readiness="factory_ready",
         applicable_mechanics=["book_stable", "maker_friendly", "spread_capture"],
         applicable_regimes=["anchored", "drifting", "range"],
         outputs=["quote_prices", "passive_participation"],
@@ -35,6 +41,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="inventory_skew_mm",
         summary="Shift quote center or size to prevent inventory from running away.",
+        families=["market_making_and_quoting"],
+        readiness="factory_ready",
         applicable_mechanics=["inventory_sensitive", "market_making"],
         applicable_regimes=["anchored", "range", "drifting"],
         outputs=["reservation_shift", "passive_size_bias"],
@@ -43,6 +51,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="short_horizon_regression_alpha",
         summary="Short-window forecast for products with local directional structure.",
+        families=["trend_and_forecasting"],
+        readiness="factory_ready",
         applicable_mechanics=["trend", "microstructure_alpha", "latent_fair"],
         applicable_regimes=["drifting", "trend", "mixed"],
         outputs=["predicted_edge", "fit_quality"],
@@ -51,6 +61,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="residual_mean_reversion",
         summary="Mean reversion on detrended residuals rather than on raw price.",
+        families=["fair_value_and_mean_reversion"],
+        readiness="factory_ready",
         applicable_mechanics=["mean_reversion", "residual", "latent_fair"],
         applicable_regimes=["range", "mixed"],
         outputs=["reversion_signal", "veto_signal"],
@@ -59,6 +71,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="breakout_confirmation",
         summary="Only follow breaks when flow, persistence, and price movement agree.",
+        families=["trend_and_forecasting"],
+        readiness="factory_ready",
         applicable_mechanics=["breakout", "burst", "flow_sensitive"],
         applicable_regimes=["trend", "mixed", "volatile"],
         outputs=["breakout_score", "aggression_scaler"],
@@ -67,6 +81,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="pair_or_spread_trading",
         summary="Trade residuals between linked products, spreads, or baskets.",
+        families=["fair_value_and_mean_reversion"],
+        readiness="factory_ready",
         applicable_mechanics=["pair_linked", "basket", "spread_relationship"],
         applicable_regimes=["linked", "residual"],
         outputs=["spread_fair", "hedge_target"],
@@ -75,6 +91,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="option_parity_and_hedging",
         summary="Derivative sleeve using theoretical value gaps and hedge-aware execution.",
+        families=["pricing_and_derivatives"],
+        readiness="factory_ready",
         applicable_mechanics=["option", "derivative", "expiry"],
         applicable_regimes=["derivative"],
         outputs=["theoretical_value", "delta_bias", "hedge_orders"],
@@ -83,6 +101,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="informed_flow_tracking",
         summary="React to persistent informed or privileged participants when they exist.",
+        families=["order_flow_and_microstructure"],
+        readiness="factory_ready",
         applicable_mechanics=["informed_trader", "named_participant", "flow_following"],
         applicable_regimes=["informed_flow"],
         outputs=["participant_bias", "follow_or_fade_signal"],
@@ -91,6 +111,8 @@ STRATEGY_REGISTRY: list[StrategyCapability] = [
     StrategyCapability(
         name="execution_probe_suite",
         summary="Research-mode probe family for dormant logic, passive fills, and aggressive markouts.",
+        families=["execution_and_participation"],
+        readiness="research_only",
         applicable_mechanics=["unknown_execution", "hidden_simulator", "transfer_gap"],
         applicable_regimes=["any"],
         outputs=["discoveries", "decision_boundary_reports"],
