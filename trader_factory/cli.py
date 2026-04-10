@@ -18,6 +18,7 @@ from trader_factory.official import (
 from trader_factory.optimization import run_cmaes
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 from trader_factory.viewer import run_viewer_server
+from trader_factory.workflows import run_imc_develop_cycle
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -164,6 +165,65 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional explicit baseline official .json. If omitted, the current active submission is downloaded automatically.",
     )
     official_cycle.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis.")
+
+    develop_cycle = subparsers.add_parser(
+        "develop-cycle-imc",
+        help="Development-mode pipeline: local gate first, official submission second.",
+    )
+    develop_cycle.add_argument("bot", type=Path, help="Candidate trader Python file.")
+    develop_cycle.add_argument("--compare-bot", type=Path, default=None, help="Optional local baseline trader for deterministic and Monte Carlo comparison.")
+    develop_cycle.add_argument("--output-dir", type=Path, default=None, help="Optional output directory.")
+    develop_cycle.add_argument("--data-root", type=Path, default=None, help="Optional replay data directory override.")
+    develop_cycle.add_argument("--dataset-tag", default=None, help="Optional replay dataset tag override.")
+    develop_cycle.add_argument("--deterministic-days", type=int, nargs="*", default=[-1, -2], help="Days for local deterministic gating.")
+    develop_cycle.add_argument("--skip-deterministic", action="store_true", help="Skip deterministic gating.")
+    develop_cycle.add_argument("--skip-monte-carlo", action="store_true", help="Skip Monte Carlo gating.")
+    develop_cycle.add_argument(
+        "--deterministic-min-total-delta",
+        type=float,
+        default=0.0,
+        help="Minimum candidate minus baseline deterministic total delta required to pass.",
+    )
+    develop_cycle.add_argument(
+        "--mc-families",
+        nargs="*",
+        default=None,
+        help="Optional Monte Carlo family subset. Defaults to quick plausible families.",
+    )
+    develop_cycle.add_argument("--mc-samples-per-family", type=int, default=2, help="Monte Carlo samples per family.")
+    develop_cycle.add_argument("--mc-seed", type=int, default=52, help="Monte Carlo random seed.")
+    develop_cycle.add_argument("--mc-min-mean-delta", type=float, default=0.0, help="Minimum overall Monte Carlo mean delta vs local baseline.")
+    develop_cycle.add_argument("--mc-min-p10-delta", type=float, default=None, help="Optional minimum overall Monte Carlo p10 delta vs local baseline.")
+    develop_cycle.add_argument(
+        "--mc-min-plausible-mean-delta",
+        type=float,
+        default=0.0,
+        help="Minimum plausible-profile Monte Carlo mean delta vs local baseline.",
+    )
+    develop_cycle.add_argument(
+        "--mc-min-plausible-p10-delta",
+        type=float,
+        default=None,
+        help="Optional minimum plausible-profile Monte Carlo p10 delta vs local baseline.",
+    )
+    develop_cycle.add_argument("--force-submit", action="store_true", help="Submit officially even if local gates fail.")
+    develop_cycle.add_argument("--dry-run", action="store_true", help="Run the local gates and summary only, without using an official submission slot.")
+    develop_cycle.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+    develop_cycle.add_argument("--chrome-app", default="Google Chrome", help="macOS application name for Chrome.")
+    develop_cycle.add_argument("--chrome-profile-dir", default="Default", help="Chrome profile directory, default Default.")
+    develop_cycle.add_argument("--game-url", default="https://prosperity.imc.com/game", help="Prosperity landing page.")
+    develop_cycle.add_argument(
+        "--api-root",
+        default="https://3dzqiahkw1.execute-api.eu-west-1.amazonaws.com/prod",
+        help="Prosperity API root discovered from the HAR.",
+    )
+    develop_cycle.add_argument("--poll-seconds", type=float, default=15.0, help="Polling interval while the official run is simulating.")
+    develop_cycle.add_argument("--timeout-seconds", type=float, default=900.0, help="Maximum time to wait for the official run.")
+    develop_cycle.add_argument("--queue-poll-seconds", type=float, default=20.0, help="Polling interval while waiting for the team submission slot.")
+    develop_cycle.add_argument("--queue-timeout-seconds", type=float, default=1800.0, help="Maximum time to wait for the team submission slot.")
+    develop_cycle.add_argument("--baseline-log", type=Path, default=None, help="Optional explicit official baseline .log for the official comparison.")
+    develop_cycle.add_argument("--baseline-json", type=Path, default=None, help="Optional explicit official baseline .json for the official comparison.")
+    develop_cycle.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis after official submission.")
 
     return parser
 
@@ -369,6 +429,55 @@ def main() -> None:
             print(f"Profit delta vs baseline: {result.comparison_profit_delta}")
         print(f"Summary: {result.summary_path}")
         print(f"Workflow metadata: {result.metadata_path}")
+        return
+
+    if args.command == "develop-cycle-imc":
+        result = run_imc_develop_cycle(
+            args.bot,
+            compare_bot_path=args.compare_bot,
+            output_dir=args.output_dir,
+            data_root=args.data_root,
+            dataset_tag=args.dataset_tag,
+            deterministic_days=args.deterministic_days,
+            skip_deterministic=args.skip_deterministic,
+            skip_monte_carlo=args.skip_monte_carlo,
+            deterministic_min_total_delta=args.deterministic_min_total_delta,
+            mc_families=args.mc_families,
+            mc_samples_per_family=args.mc_samples_per_family,
+            mc_seed=args.mc_seed,
+            mc_min_mean_delta=args.mc_min_mean_delta,
+            mc_min_p10_delta=args.mc_min_p10_delta,
+            mc_min_plausible_mean_delta=args.mc_min_plausible_mean_delta,
+            mc_min_plausible_p10_delta=args.mc_min_plausible_p10_delta,
+            force_submit=args.force_submit,
+            dry_run=args.dry_run,
+            round_id=args.round_id,
+            chrome_app=args.chrome_app,
+            chrome_profile_dir=args.chrome_profile_dir,
+            game_url=args.game_url,
+            api_root=args.api_root,
+            poll_seconds=args.poll_seconds,
+            timeout_seconds=args.timeout_seconds,
+            queue_poll_seconds=args.queue_poll_seconds,
+            queue_timeout_seconds=args.queue_timeout_seconds,
+            skip_analysis=args.skip_analysis,
+            baseline_log=args.baseline_log,
+            baseline_json=args.baseline_json,
+        )
+        print(f"Output dir: {result.output_dir}")
+        print(f"Local gates passed: {result.local_passed}")
+        print(f"Submitted officially: {result.submitted_officially}")
+        if result.deterministic.total_delta is not None:
+            print(f"Deterministic total delta: {result.deterministic.total_delta}")
+        if result.monte_carlo.mean_delta is not None:
+            print(f"Monte Carlo mean delta: {result.monte_carlo.mean_delta}")
+        if result.monte_carlo.plausible_mean_delta is not None:
+            print(f"Monte Carlo plausible mean delta: {result.monte_carlo.plausible_mean_delta}")
+        if result.official_result is not None:
+            print(f"Official submission id: {result.official_result.run_result.submission_id}")
+            print(f"Counts for team: {result.official_result.counts_for_team}")
+        print(f"Summary: {result.summary_path}")
+        print(f"Metadata: {result.metadata_path}")
         return
 
     parser.error(f"Unknown command: {args.command}")

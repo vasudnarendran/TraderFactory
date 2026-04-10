@@ -47,6 +47,22 @@ That workflow adds the team-aware behavior you asked for:
 6. run the official comparison
 7. emit a one-file workflow summary including whether the new run is still the submission that counts
 
+Above that, there is now one development-mode command:
+
+```bash
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+  --compare-bot /path/to/Baseline.py
+```
+
+That command adds the local decision layer before the official submission:
+
+1. run deterministic replay against a local baseline
+2. run a quick Monte Carlo robustness comparison against the same local baseline
+3. submit officially only if the local gates pass, unless `--force-submit` is set
+4. then run the queue-aware official workflow
+
+Use `--dry-run` if you want to validate the local gate and summary path without consuming the official submission slot.
+
 ## Current Requirements
 
 This automation is intentionally profile-based, not password-based.

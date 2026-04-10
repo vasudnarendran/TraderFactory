@@ -18,6 +18,7 @@ Typical work:
 - run Monte Carlo robustness
 - run focused optimization
 - compare against the baseline
+- use `develop-cycle-imc` when you want TraderFactory to apply a standard local gate before consuming an official submission slot
 
 ## Research Mode
 
@@ -48,3 +49,35 @@ The operating rule established in the current project is:
 
 This prevents endless half-research, half-development branches.
 
+## Current CLI Mapping
+
+Development mode:
+
+```bash
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+  --compare-bot /path/to/Baseline.py
+```
+
+This runs:
+
+1. local deterministic checks
+2. local Monte Carlo checks
+3. official submission only if the local gates pass, unless `--force-submit` is set
+4. a final summary with both local and official verdicts
+
+For a safe local-only validation pass:
+
+```bash
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+  --compare-bot /path/to/Baseline.py \
+  --dry-run
+```
+
+Research mode:
+
+```bash
+python3 -m trader_factory.cli probe-scaffold ...
+python3 -m trader_factory.cli boundary-probe ...
+python3 -m trader_factory.cli passive-ladder ...
+python3 -m trader_factory.cli aggressive-markout ...
+```
