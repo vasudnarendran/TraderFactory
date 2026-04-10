@@ -7,10 +7,12 @@ The first `TraderFactory` version should not try to do everything.
 - structured competition and product specs
 - strategy registry
 - baseline round planning
-- deterministic backtest migration target
-- Monte Carlo migration target
-- CMA-ES migration target
-- official diagnostics migration target
+- deterministic backtest engine
+- Monte Carlo robustness engine
+- CMA-ES optimization engine
+- official diagnostics engine
+- probe scaffolding
+- baseline trader project scaffolding
 - research/development workflow conventions
 - durable handoff and discovery documentation
 
@@ -24,4 +26,3 @@ The first `TraderFactory` version should not try to do everything.
 - online learning framework
 
 The MVP should already be useful for real work, even before the advanced mechanic families are fully implemented.
-

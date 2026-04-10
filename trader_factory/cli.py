@@ -10,8 +10,9 @@ from trader_factory.diagnostics import (
     run_official_trade_quality,
     run_passive_ladder_report,
 )
-from trader_factory.generation.bootstrap import render_markdown_plan
+from trader_factory.generation import render_markdown_plan, scaffold_trader_project
 from trader_factory.optimization import run_cmaes
+from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,11 +27,13 @@ def build_parser() -> argparse.ArgumentParser:
     deterministic.add_argument("bot", type=Path, help="Path to the trader Python file.")
     deterministic.add_argument("--day", type=int, default=-1, help="Day to replay.")
     deterministic.add_argument("--output", type=Path, default=None, help="Optional output directory.")
+    deterministic.add_argument("--data-root", type=Path, default=None, help="Optional replay data directory override.")
 
     monte = subparsers.add_parser("monte-carlo", help="Run TraderFactory headless Monte Carlo robustness.")
     monte.add_argument("bot", type=Path, help="Path to the trader Python file.")
     monte.add_argument("--compare-bot", type=Path, default=None, help="Optional comparison trader Python file.")
     monte.add_argument("--output-dir", type=Path, default=None, help="Optional output directory.")
+    monte.add_argument("--data-root", type=Path, default=None, help="Optional replay data directory override.")
     monte.add_argument("--days", type=int, nargs="*", default=[-1, -2], help="Replay days to include.")
     monte.add_argument("--samples-per-family", type=int, default=4, help="Monte Carlo samples per family.")
     monte.add_argument("--families", nargs="*", default=None, help="Optional family subset.")
@@ -69,6 +72,19 @@ def build_parser() -> argparse.ArgumentParser:
     cmaes.add_argument("--sigma0", type=float, default=None, help="Optional initial sigma override.")
     cmaes.add_argument("--seed", type=int, default=None, help="Optional random-seed override.")
 
+    probe = subparsers.add_parser("probe-scaffold", help="Scaffold a research probe workspace from a baseline bot.")
+    probe.add_argument("kind", choices=sorted(PROBE_LIBRARY), help="Probe kind to scaffold.")
+    probe.add_argument("baseline_bot", type=Path, help="Baseline bot file the probe is built around.")
+    probe.add_argument("--name", default=None, help="Optional probe workspace name.")
+    probe.add_argument("--output-dir", type=Path, default=None, help="Optional workspace directory override.")
+    probe.add_argument("--product", default="TOMATOES", help="Primary product symbol for the probe.")
+    probe.add_argument("--context", default=None, help="Optional probe context label, mainly for aggressive probes.")
+
+    scaffold = subparsers.add_parser("scaffold-project", help="Generate a baseline trader project from a competition spec.")
+    scaffold.add_argument("spec", type=Path, help="Path to the competition spec JSON.")
+    scaffold.add_argument("--output-dir", type=Path, default=None, help="Optional target project directory.")
+    scaffold.add_argument("--name", default=None, help="Optional project name override.")
+
     return parser
 
 
@@ -89,7 +105,7 @@ def main() -> None:
     if args.command == "deterministic":
         from trader_factory.simulation import run_deterministic
 
-        result = run_deterministic(args.bot, day=args.day, output_dir=args.output)
+        result = run_deterministic(args.bot, day=args.day, output_dir=args.output, data_root=args.data_root)
         print(f"Output dir: {result.output_dir}")
         print(f"Summary: {result.summary_path}")
         print(f"Final total PnL: {result.final_total_pnl}")
@@ -102,6 +118,7 @@ def main() -> None:
             args.bot,
             compare_bot_path=args.compare_bot,
             output_dir=args.output_dir,
+            data_root=args.data_root,
             days=tuple(args.days),
             samples_per_family=args.samples_per_family,
             families=args.families,
@@ -165,6 +182,37 @@ def main() -> None:
         print(f"Report: {result.report_path}")
         print(f"Best objective: {result.best_objective}")
         print(f"Best average: {result.best_average}")
+        return
+
+    if args.command == "probe-scaffold":
+        result = scaffold_probe_workspace(
+            args.kind,
+            args.baseline_bot,
+            probe_name=args.name,
+            output_dir=args.output_dir,
+            product=args.product,
+            context=args.context,
+        )
+        print(f"Workspace: {result.output_dir}")
+        print(f"README: {result.readme_path}")
+        print(f"Config: {result.config_path}")
+        print(f"Submission scaffold: {result.submission_probe_path}")
+        print(f"Notes: {result.notes_path}")
+        return
+
+    if args.command == "scaffold-project":
+        result = scaffold_trader_project(
+            args.spec,
+            output_dir=args.output_dir,
+            project_name=args.name,
+        )
+        print(f"Project dir: {result.output_dir}")
+        print(f"README: {result.readme_path}")
+        print(f"Spec copy: {result.spec_copy_path}")
+        print(f"Plan: {result.plan_path}")
+        print(f"Trader: {result.trader_path}")
+        print(f"Params: {result.params_path}")
+        print(f"Notes: {result.notes_path}")
         return
 
     parser.error(f"Unknown command: {args.command}")

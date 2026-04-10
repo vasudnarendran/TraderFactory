@@ -27,6 +27,13 @@ It is the first grounded scaffold built from the real work already done in:
 - [Prosperity](/Users/vasudravinarendran/Documents/Prosperity/Prosperity)
 - [MyProsperity](/Users/vasudravinarendran/Documents/Prosperity/MyProsperity)
 
+Those repos are provenance, not prerequisites.
+This repo is intended to stand on its own once you provide:
+
+- a competition spec
+- replay CSVs
+- official `.log` / `.json` artifacts when doing postmortems
+
 So the README is split into two parts:
 
 1. what already exists in this scaffold right now
@@ -43,6 +50,7 @@ The following pieces are already present in this repo scaffold:
 - a workflow definition in [trader_factory/workflows/modes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/modes.py)
 - a local CMA-ES optimization engine in [trader_factory/optimization/cmaes.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/optimization/cmaes.py)
 - a local headless Monte Carlo robustness engine in [trader_factory/simulation/monte_carlo.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/monte_carlo.py)
+- a reusable execution-probe framework in [trader_factory/probes](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/probes)
 - working deterministic replay and diagnostics engines in:
   - [trader_factory/simulation/deterministic.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/deterministic.py)
   - [trader_factory/simulation/internal_backtest.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/internal_backtest.py)
@@ -59,8 +67,8 @@ The following pieces are already present in this repo scaffold:
 The following major capabilities are not yet fully migrated into this repo, but are documented and intentionally planned:
 
 - legacy Monte Carlo viewer/dashboard extraction
-- true in-package execution probe bot framework extraction
-- code generation for round-specific runnable bots
+- historical probe-bot catalog migration beyond the new framework
+- richer code generation from capabilities into production-ready trader sleeves
 
 ## Start Here If You Are New
 
@@ -76,8 +84,34 @@ If you are a new teammate or a new coding agent, read these in order:
 8. [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
 9. [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
 10. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+11. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
+12. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
 If you only read one technical reference after this README, read the full architecture doc.
+
+## Setup
+
+Minimum setup:
+
+1. Use Python `3.11+`.
+2. Install the package from the repo root:
+
+```bash
+python3 -m pip install -e .
+```
+
+3. Put replay datasets under [data/README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/data/README.md), or plan to pass `--data-root`.
+4. Keep official submission outputs available for diagnostics:
+   - `.log`
+   - `.json`
+   - optionally the submitted `.py`
+
+Input expectations by command:
+
+- `plan` and `scaffold-project`: competition spec JSON
+- `deterministic` and `monte-carlo`: trader Python file plus replay CSVs
+- diagnostics: official `.log`, sometimes `.json`
+- `probe-scaffold`: baseline trader Python file
 
 ## Repo Philosophy
 
@@ -113,6 +147,7 @@ TraderFactory/
     diagnostics/
     generation/
     optimization/
+    probes/
     simulation/
     strategies/
     workflows/
@@ -135,8 +170,13 @@ This layer is what lets an agent reason from product mechanics instead of hand-w
 
 Holds the logic that turns a round spec into a baseline build plan.
 
-Right now it produces a readable planning artifact.
-Later it should generate full trader projects.
+Right now it produces:
+
+- readable round plans
+- probe workspaces
+- baseline trader projects
+
+Later it should generate stronger sleeve implementations from selected capabilities.
 
 ### `trader_factory/strategies/`
 
@@ -178,6 +218,14 @@ Reserved for:
 - trade quality reports
 - dormant-vs-live boundary probes
 - passive and aggressive execution probes
+
+### `trader_factory/probes/`
+
+Holds the research-mode execution probe framework:
+
+- probe types and event schemas
+- DIAG logging helpers
+- research workspace scaffolding
 
 ### `trader_factory/workflows/`
 
@@ -246,6 +294,7 @@ Deterministic replay:
 
 ```bash
 python3 -m trader_factory.cli deterministic /absolute/path/to/Trader.py --day -1
+python3 -m trader_factory.cli deterministic /absolute/path/to/Trader.py --day -1 --data-root /absolute/path/to/data
 ```
 
 Official trade quality:
@@ -260,11 +309,24 @@ Aggressive markout probe summary:
 python3 -m trader_factory.cli aggressive-markout /absolute/path/to/run.log --json-path /absolute/path/to/run.json
 ```
 
+Probe workspace scaffold:
+
+```bash
+python3 -m trader_factory.cli probe-scaffold aggressive_markout /absolute/path/to/Traderv52.py --context range_buy
+```
+
+Project scaffold:
+
+```bash
+python3 -m trader_factory.cli scaffold-project configs/examples/prosperity_round0.json --output-dir /tmp/round0_project
+```
+
 Monte Carlo:
 
 ```bash
 python3 -m trader_factory.cli monte-carlo /absolute/path/to/Trader.py
 python3 -m trader_factory.cli monte-carlo /absolute/path/to/PrimaryTrader.py --compare-bot /absolute/path/to/BaselineTrader.py
+python3 -m trader_factory.cli monte-carlo /absolute/path/to/Trader.py --data-root /absolute/path/to/data
 ```
 
 CMA-ES:
@@ -276,10 +338,13 @@ python3 -m trader_factory.cli cmaes configs/examples/v52_tight_cmaes.json
 Important note:
 
 - the headless Monte Carlo robustness engine is local to TraderFactory
+- deterministic replay and Monte Carlo look in `TraderFactory/data/` first, then fall back to the legacy sibling `Prosperity/Data/` path
 - the legacy dashboard/viewer tooling is still separate future work
 - see [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
 - detailed Monte Carlo usage is documented in [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
 - the CMA-ES engine is local to TraderFactory and documented in [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
+- the probe framework is local to TraderFactory and documented in [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
+- the baseline project generator is documented in [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
 ### 4. Read the workflow docs
 
@@ -291,6 +356,8 @@ Start with:
 - [docs/TRADER_FACTORY_ARCHITECTURE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE.md)
 - [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
 - [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+- [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
+- [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
 ### 5. Review the source references
 
@@ -386,11 +453,11 @@ The repo is deliberately being set up so no important process knowledge depends 
 
 The current source repo already contains the raw material.
 
-Highest-priority migrations:
+Highest-priority remaining migrations:
 
 - Monte Carlo viewer from `MonteCarloBacktester/monte_carlo_viewer/`
-- execution probe bot framework from `Research/execution_probes/`
-- generated trader-project creation on top of the engine layer
+- historical probe bot examples from `Research/execution_probes/`
+- richer trader-project generation on top of the current scaffold
 
 The recommended order is documented in:
 

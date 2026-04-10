@@ -1,19 +1,22 @@
 # TraderFactory Architecture
 
-The detailed architecture draft for this repo was first written in:
+This short document is the local architecture summary for the standalone repo.
 
-- [Research/TRADER_FACTORY_ARCHITECTURE.md](/Users/vasudravinarendran/Documents/Prosperity/Prosperity/Research/TRADER_FACTORY_ARCHITECTURE.md)
+For the full version, read:
 
-That document is copied conceptually into this repo scaffold through:
+- [docs/TRADER_FACTORY_ARCHITECTURE_FULL.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE_FULL.md)
+
+Supporting local documents:
 
 - [README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/README.md)
 - [docs/MVP_SCOPE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MVP_SCOPE.md)
 - [docs/MIGRATION_PLAN.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MIGRATION_PLAN.md)
+- [docs/WORKFLOW.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/WORKFLOW.md)
 
 The short version:
 
 - organize by mechanics, not version numbers
 - separate development mode from research mode
-- use structured specs as the input
-- treat bot files as outputs of the workflow, not the repo architecture
-- preserve discoveries in durable docs
+- use structured specs as the main input
+- treat bot files as workflow outputs, not repo architecture
+- preserve discoveries in durable repo docs

@@ -45,6 +45,7 @@ def run_deterministic(
     *,
     day: int = -1,
     output_dir: str | Path | None = None,
+    data_root: str | Path | None = None,
     python_bin: str = sys.executable,
     timeout_seconds: float | None = None,
     check: bool = True,
@@ -62,6 +63,8 @@ def run_deterministic(
         "--output",
         str(out_dir),
     ]
+    if data_root is not None:
+        command.extend(["--data-root", str(Path(data_root).expanduser().resolve())])
     process = subprocess.run(
         command,
         cwd=trader_factory_root(),

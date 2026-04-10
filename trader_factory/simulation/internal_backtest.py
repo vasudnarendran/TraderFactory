@@ -23,7 +23,8 @@ import matplotlib.pyplot as plt
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROJECTS_ROOT = REPO_ROOT.parent
-DEFAULT_DATA_DIR = PROJECTS_ROOT / "Prosperity" / "Data"
+LOCAL_DATA_DIR = REPO_ROOT / "data"
+LEGACY_DATA_DIR = PROJECTS_ROOT / "Prosperity" / "Data"
 DATAMODEL_PATH = REPO_ROOT / "trader_factory" / "core" / "datamodel.py"
 DENOMINATION = "XIRECS"
 
@@ -50,9 +51,37 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-root",
         default="",
-        help="Optional directory containing prices_round_0_day_*.csv and trades_round_0_day_*.csv.",
+        help=(
+            "Optional directory containing prices_round_0_day_*.csv and trades_round_0_day_*.csv. "
+            "If omitted, TraderFactory tries repo-local data/ first, then the legacy sibling Prosperity/Data path."
+        ),
     )
     return parser.parse_args()
+
+
+def _looks_like_data_dir(path: Path) -> bool:
+    return any(path.glob("prices_round_0_day_*.csv")) and any(path.glob("trades_round_0_day_*.csv"))
+
+
+def resolve_data_dir(data_root: str | Path | None = None) -> Path:
+    if data_root:
+        candidate = Path(data_root).expanduser().resolve()
+        if not candidate.exists():
+            raise FileNotFoundError(f"Data directory does not exist: {candidate}")
+        if not _looks_like_data_dir(candidate):
+            raise FileNotFoundError(
+                f"Data directory {candidate} does not contain prices_round_0_day_*.csv and trades_round_0_day_*.csv"
+            )
+        return candidate
+
+    for candidate in (LOCAL_DATA_DIR, LEGACY_DATA_DIR):
+        if candidate.exists() and _looks_like_data_dir(candidate):
+            return candidate.resolve()
+
+    raise FileNotFoundError(
+        "Could not find replay data. Place Prosperity CSVs under TraderFactory/data/ "
+        "or pass --data-root explicitly."
+    )
 
 
 def resolve_bot_path(bot_argument: str) -> Path:
@@ -438,7 +467,7 @@ def main() -> None:
     ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass = ensure_imports(bot_path)
     trader = load_trader(bot_path)
 
-    data_dir = Path(args.data_root).expanduser().resolve() if args.data_root else DEFAULT_DATA_DIR
+    data_dir = resolve_data_dir(args.data_root or None)
     prices_by_key, market_trades_by_day, listings, ordered_keys = load_market(
         ListingClass,
         TradeClass,
