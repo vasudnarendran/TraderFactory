@@ -5,10 +5,9 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 import uuid
 import zipfile
 from dataclasses import asdict, dataclass, field
@@ -109,29 +108,7 @@ def _open_or_focus_prosperity_tab(*, game_url: str, chrome_app: str) -> None:
     script = f'''
 tell application "{chrome_app}"
     activate
-    set found to false
-    repeat with w in windows
-        repeat with i from 1 to (count of tabs of w)
-            set t to tab i of w
-            if URL of t starts with "https://prosperity.imc.com/" then
-                set active tab index of w to i
-                set index of w to 1
-                set found to true
-                exit repeat
-            end if
-        end repeat
-        if found then exit repeat
-    end repeat
-    if not found then
-        if (count of windows) = 0 then
-            set newWindow to make new window
-            set URL of active tab of newWindow to "{game_url}"
-        else
-            set newTab to make new tab at end of tabs of front window
-            set URL of newTab to "{game_url}"
-            set active tab index of front window to (count of tabs of front window)
-        end if
-    end if
+    open location "{game_url}"
 end tell
 '''
     _run_osascript(script)
@@ -290,14 +267,55 @@ def _http_request(
     data: bytes | None = None,
     timeout: float = 60.0,
 ) -> tuple[int, str, dict[str, str]]:
-    request = urllib.request.Request(url, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = response.read().decode("utf-8")
-            return response.status, payload, dict(response.headers.items())
-    except urllib.error.HTTPError as exc:
-        payload = exc.read().decode("utf-8", errors="replace")
-        return exc.code, payload, dict(exc.headers.items())
+    with tempfile.TemporaryDirectory(prefix="traderfactory_official_http_") as temp_dir:
+        temp_root = Path(temp_dir)
+        body_path = temp_root / "response.body"
+        header_path = temp_root / "response.headers"
+        command = [
+            "curl",
+            "--silent",
+            "--show-error",
+            "--location",
+            "--request",
+            method,
+            "--output",
+            str(body_path),
+            "--dump-header",
+            str(header_path),
+            "--write-out",
+            "%{http_code}",
+            "--max-time",
+            str(max(1, int(timeout))),
+        ]
+        for name, value in headers.items():
+            command.extend(["--header", f"{name}: {value}"])
+        if data is not None:
+            data_path = temp_root / "request.body"
+            data_path.write_bytes(data)
+            command.extend(["--data-binary", f"@{data_path}"])
+        command.append(url)
+        process = subprocess.run(command, capture_output=True, text=True)
+        if process.returncode != 0:
+            raise OfficialAutomationError(process.stderr.strip() or process.stdout.strip() or "curl request failed")
+        status_text = process.stdout.strip() or "0"
+        try:
+            status = int(status_text[-3:])
+        except ValueError as exc:
+            raise OfficialAutomationError(f"Could not parse HTTP status from curl output: {status_text}") from exc
+        payload = body_path.read_text(errors="replace") if body_path.exists() else ""
+        response_headers: dict[str, str] = {}
+        if header_path.exists():
+            header_text = header_path.read_text(errors="replace")
+            blocks = [block for block in header_text.split("\r\n\r\n") if block.strip()]
+            if not blocks:
+                blocks = [block for block in header_text.split("\n\n") if block.strip()]
+            final_block = blocks[-1] if blocks else ""
+            lines = [line.strip() for line in final_block.splitlines() if line.strip()]
+            for line in lines[1:]:
+                if ":" in line:
+                    name, value = line.split(":", 1)
+                    response_headers[name.strip()] = value.strip()
+        return status, payload, response_headers
 
 
 def _parse_json_response(status: int, payload: str) -> dict[str, Any]:
@@ -435,9 +453,20 @@ def _fetch_zip_url(
 
 def _download_url(url: str, target_path: Path) -> Path:
     ensure_dir(target_path.parent)
-    request = urllib.request.Request(url, headers={"User-Agent": "TraderFactory"})
-    with urllib.request.urlopen(request, timeout=120.0) as response, target_path.open("wb") as handle:
-        shutil.copyfileobj(response, handle)
+    command = [
+        "curl",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--output",
+        str(target_path),
+        "--header",
+        "User-Agent: TraderFactory",
+        url,
+    ]
+    process = subprocess.run(command, capture_output=True, text=True)
+    if process.returncode != 0:
+        raise OfficialAutomationError(process.stderr.strip() or process.stdout.strip() or "curl download failed")
     return target_path
 
 
