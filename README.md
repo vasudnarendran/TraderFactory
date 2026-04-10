@@ -55,6 +55,7 @@ The following pieces are already present in this repo scaffold:
 - a first official submission automation path in [trader_factory/official/imc_prosperity.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/official/imc_prosperity.py)
 - a queue-aware official submission workflow in [trader_factory/official/workflow.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/official/workflow.py)
 - a development-mode decision pipeline in [trader_factory/workflows/imc_develop.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/imc_develop.py)
+- a persisted baseline-policy layer in [trader_factory/workflows/baselines.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/baselines.py)
 - a reusable execution-probe framework in [trader_factory/probes](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/probes)
 - a capability-aware project generator in [trader_factory/generation/project.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/project.py)
 - working deterministic replay and diagnostics engines in:

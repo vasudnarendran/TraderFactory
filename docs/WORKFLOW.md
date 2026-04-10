@@ -54,8 +54,12 @@ This prevents endless half-research, half-development branches.
 Development mode:
 
 ```bash
-python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+python3 -m trader_factory.cli baseline-imc-set \
+  --round-id 1 \
   --compare-bot /path/to/Baseline.py
+
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+  --round-id 1
 ```
 
 This runs:
@@ -65,12 +69,13 @@ This runs:
 3. official submission only if the local gates pass, unless `--force-submit` is set
 4. a final summary with both local and official verdicts
 
+The baseline command is optional, but useful. Once set, `develop-cycle-imc` can reuse the stored local baseline bot and optional official baseline artifacts automatically.
+The policy JSON lives under `configs/baselines/` and is treated as local machine state rather than committed project config.
+
 For a safe local-only validation pass:
 
 ```bash
-python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
-  --compare-bot /path/to/Baseline.py \
-  --dry-run
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py --round-id 1 --dry-run
 ```
 
 Research mode:

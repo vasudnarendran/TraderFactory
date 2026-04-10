@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 generated/*
 !generated/README.md
+configs/baselines/*.json

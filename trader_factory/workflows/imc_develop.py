@@ -9,6 +9,7 @@ from typing import Any
 from trader_factory.core.paths import ensure_dir, generated_root
 from trader_factory.official import ImcProsperityWorkflowResult, run_imc_prosperity_workflow
 from trader_factory.simulation import run_deterministic, run_monte_carlo
+from trader_factory.workflows.baselines import ImcBaselinePolicy, load_imc_baseline_policy
 
 
 @dataclass(slots=True)
@@ -47,6 +48,7 @@ class ImcDevelopCycleResult:
     metadata_path: Path
     local_passed: bool
     submitted_officially: bool
+    baseline_policy: ImcBaselinePolicy | None
     deterministic: DeterministicGateResult
     monte_carlo: MonteCarloGateResult
     official_result: ImcProsperityWorkflowResult | None
@@ -209,6 +211,7 @@ def _write_summary(
     submitted_officially: bool,
     force_submit: bool,
     dry_run: bool,
+    baseline_policy: ImcBaselinePolicy | None,
     deterministic: DeterministicGateResult,
     monte_carlo: MonteCarloGateResult,
     official_result: ImcProsperityWorkflowResult | None,
@@ -221,6 +224,12 @@ def _write_summary(
         f"- Submitted officially: `{submitted_officially}`",
         f"- Force submit override: `{force_submit}`",
         f"- Dry run: `{dry_run}`",
+        "",
+        "## Baseline Policy",
+        f"- Loaded policy: `{baseline_policy is not None}`",
+        f"- Policy compare bot: `{baseline_policy.compare_bot_path if baseline_policy else 'none'}`",
+        f"- Policy official baseline log: `{baseline_policy.official_baseline_log if baseline_policy else 'none'}`",
+        f"- Policy official baseline json: `{baseline_policy.official_baseline_json if baseline_policy else 'none'}`",
         "",
         "## Deterministic Gate",
         f"- Ran: `{deterministic.ran}`",
@@ -306,11 +315,20 @@ def run_imc_develop_cycle(
     baseline_json: str | Path | None = None,
 ) -> ImcDevelopCycleResult:
     candidate_bot = Path(bot_path).expanduser().resolve()
+    baseline_policy = load_imc_baseline_policy(round_id)
     compare_bot = Path(compare_bot_path).expanduser().resolve() if compare_bot_path else None
+    if compare_bot is None and baseline_policy is not None:
+        compare_bot = baseline_policy.compare_bot_path
     root = Path(output_dir).expanduser().resolve() if output_dir else _default_output_dir(candidate_bot)
     ensure_dir(root)
     resolved_data_root = Path(data_root).expanduser().resolve() if data_root else None
     day_list = [int(day) for day in deterministic_days]
+    resolved_baseline_log = Path(baseline_log).expanduser().resolve() if baseline_log else None
+    resolved_baseline_json = Path(baseline_json).expanduser().resolve() if baseline_json else None
+    if resolved_baseline_log is None and baseline_policy is not None:
+        resolved_baseline_log = baseline_policy.official_baseline_log
+    if resolved_baseline_json is None and baseline_policy is not None:
+        resolved_baseline_json = baseline_policy.official_baseline_json
 
     deterministic_result = DeterministicGateResult(
         ran=False,
@@ -383,8 +401,8 @@ def run_imc_develop_cycle(
             queue_poll_seconds=queue_poll_seconds,
             queue_timeout_seconds=queue_timeout_seconds,
             run_analysis=not skip_analysis,
-            baseline_log=baseline_log,
-            baseline_json=baseline_json,
+            baseline_log=resolved_baseline_log,
+            baseline_json=resolved_baseline_json,
         )
         submitted_officially = True
 
@@ -395,6 +413,7 @@ def run_imc_develop_cycle(
         submitted_officially=submitted_officially,
         force_submit=force_submit,
         dry_run=dry_run,
+        baseline_policy=baseline_policy,
         deterministic=deterministic_result,
         monte_carlo=monte_carlo_result,
         official_result=official_result,
@@ -402,6 +421,7 @@ def run_imc_develop_cycle(
     metadata = {
         "candidate_bot": str(candidate_bot),
         "compare_bot": str(compare_bot) if compare_bot else None,
+        "baseline_policy": baseline_policy.to_dict() if baseline_policy else None,
         "local_passed": local_passed,
         "submitted_officially": submitted_officially,
         "force_submit": force_submit,
@@ -427,6 +447,7 @@ def run_imc_develop_cycle(
         metadata_path=metadata_path,
         local_passed=local_passed,
         submitted_officially=submitted_officially,
+        baseline_policy=baseline_policy,
         deterministic=deterministic_result,
         monte_carlo=monte_carlo_result,
         official_result=official_result,

@@ -50,8 +50,12 @@ That workflow adds the team-aware behavior you asked for:
 Above that, there is now one development-mode command:
 
 ```bash
-python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+python3 -m trader_factory.cli baseline-imc-set \
+  --round-id 1 \
   --compare-bot /path/to/Baseline.py
+
+python3 -m trader_factory.cli develop-cycle-imc /path/to/Candidate.py \
+  --round-id 1
 ```
 
 That command adds the local decision layer before the official submission:
@@ -62,6 +66,8 @@ That command adds the local decision layer before the official submission:
 4. then run the queue-aware official workflow
 
 Use `--dry-run` if you want to validate the local gate and summary path without consuming the official submission slot.
+
+Use `baseline-imc-show` to inspect the currently stored baseline policy for a round.
 
 ## Current Requirements
 

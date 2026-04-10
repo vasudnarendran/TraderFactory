@@ -18,7 +18,13 @@ from trader_factory.official import (
 from trader_factory.optimization import run_cmaes
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 from trader_factory.viewer import run_viewer_server
-from trader_factory.workflows import run_imc_develop_cycle
+from trader_factory.workflows import (
+    baseline_policy_path,
+    describe_imc_baseline_policy,
+    load_imc_baseline_policy,
+    run_imc_develop_cycle,
+    set_imc_baseline_policy,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -224,6 +230,16 @@ def build_parser() -> argparse.ArgumentParser:
     develop_cycle.add_argument("--baseline-log", type=Path, default=None, help="Optional explicit official baseline .log for the official comparison.")
     develop_cycle.add_argument("--baseline-json", type=Path, default=None, help="Optional explicit official baseline .json for the official comparison.")
     develop_cycle.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis after official submission.")
+
+    baseline_show = subparsers.add_parser("baseline-imc-show", help="Show the persisted IMC baseline policy for a round.")
+    baseline_show.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+
+    baseline_set = subparsers.add_parser("baseline-imc-set", help="Persist the IMC baseline policy for a round.")
+    baseline_set.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+    baseline_set.add_argument("--compare-bot", type=Path, default=None, help="Local baseline trader to use for development gating.")
+    baseline_set.add_argument("--official-baseline-log", type=Path, default=None, help="Optional official baseline .log to pin.")
+    baseline_set.add_argument("--official-baseline-json", type=Path, default=None, help="Optional official baseline .json to pin.")
+    baseline_set.add_argument("--notes", default="", help="Optional note for the baseline policy.")
 
     return parser
 
@@ -478,6 +494,26 @@ def main() -> None:
             print(f"Counts for team: {result.official_result.counts_for_team}")
         print(f"Summary: {result.summary_path}")
         print(f"Metadata: {result.metadata_path}")
+        return
+
+    if args.command == "baseline-imc-show":
+        policy = load_imc_baseline_policy(args.round_id)
+        print(describe_imc_baseline_policy(policy))
+        if policy is not None:
+            print(f"policy_path: {baseline_policy_path(args.round_id)}")
+        return
+
+    if args.command == "baseline-imc-set":
+        policy, path = set_imc_baseline_policy(
+            round_id=args.round_id,
+            compare_bot_path=args.compare_bot,
+            official_baseline_log=args.official_baseline_log,
+            official_baseline_json=args.official_baseline_json,
+            notes=args.notes,
+        )
+        print("Saved IMC baseline policy:")
+        print(describe_imc_baseline_policy(policy))
+        print(f"policy_path: {path}")
         return
 
     parser.error(f"Unknown command: {args.command}")
