@@ -11,7 +11,10 @@ from trader_factory.diagnostics import (
     run_passive_ladder_report,
 )
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
-from trader_factory.official import run_imc_prosperity_submission
+from trader_factory.official import (
+    run_imc_prosperity_submission,
+    run_imc_prosperity_workflow,
+)
 from trader_factory.optimization import run_cmaes
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 from trader_factory.viewer import run_viewer_server
@@ -118,6 +121,49 @@ def build_parser() -> argparse.ArgumentParser:
     official.add_argument("--baseline-log", type=Path, default=None, help="Optional baseline official .log for automatic comparison.")
     official.add_argument("--baseline-json", type=Path, default=None, help="Optional baseline official .json for automatic comparison.")
     official.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis.")
+
+    official_cycle = subparsers.add_parser(
+        "official-cycle-imc",
+        help="Queue-aware IMC Prosperity submission workflow with automatic baseline snapshot.",
+    )
+    official_cycle.add_argument("bot", type=Path, help="Path to the trader Python file to submit.")
+    official_cycle.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+    official_cycle.add_argument("--output-dir", type=Path, default=None, help="Optional output directory.")
+    official_cycle.add_argument("--chrome-app", default="Google Chrome", help="macOS application name for Chrome.")
+    official_cycle.add_argument("--chrome-profile-dir", default="Default", help="Chrome profile directory, default Default.")
+    official_cycle.add_argument("--game-url", default="https://prosperity.imc.com/game", help="Prosperity landing page.")
+    official_cycle.add_argument(
+        "--api-root",
+        default="https://3dzqiahkw1.execute-api.eu-west-1.amazonaws.com/prod",
+        help="Prosperity API root discovered from the HAR.",
+    )
+    official_cycle.add_argument("--poll-seconds", type=float, default=15.0, help="Polling interval while the new run is simulating.")
+    official_cycle.add_argument("--timeout-seconds", type=float, default=900.0, help="Maximum time to wait for the new run.")
+    official_cycle.add_argument(
+        "--queue-poll-seconds",
+        type=float,
+        default=20.0,
+        help="Polling interval while waiting for the team submission slot to clear.",
+    )
+    official_cycle.add_argument(
+        "--queue-timeout-seconds",
+        type=float,
+        default=1800.0,
+        help="Maximum time to wait for the team submission slot.",
+    )
+    official_cycle.add_argument(
+        "--baseline-log",
+        type=Path,
+        default=None,
+        help="Optional explicit baseline official .log. If omitted, the current active submission is downloaded automatically.",
+    )
+    official_cycle.add_argument(
+        "--baseline-json",
+        type=Path,
+        default=None,
+        help="Optional explicit baseline official .json. If omitted, the current active submission is downloaded automatically.",
+    )
+    official_cycle.add_argument("--skip-analysis", action="store_true", help="Skip automatic official trade-quality analysis.")
 
     return parser
 
@@ -290,6 +336,39 @@ def main() -> None:
             print(f"LOG: {result.log_path}")
         if result.analysis_result and result.analysis_result.summary_path:
             print(f"Analysis summary: {result.analysis_result.summary_path}")
+        return
+
+    if args.command == "official-cycle-imc":
+        result = run_imc_prosperity_workflow(
+            args.bot,
+            round_id=args.round_id,
+            output_dir=args.output_dir,
+            chrome_app=args.chrome_app,
+            chrome_profile_dir=args.chrome_profile_dir,
+            game_url=args.game_url,
+            api_root=args.api_root,
+            poll_seconds=args.poll_seconds,
+            timeout_seconds=args.timeout_seconds,
+            queue_poll_seconds=args.queue_poll_seconds,
+            queue_timeout_seconds=args.queue_timeout_seconds,
+            run_analysis=not args.skip_analysis,
+            baseline_log=args.baseline_log,
+            baseline_json=args.baseline_json,
+        )
+        print(f"Submission dir: {result.run_result.output_dir}")
+        print(f"Submission id: {result.run_result.submission_id}")
+        print(f"Queue wait seconds: {result.queue_wait_seconds}")
+        if result.baseline_submission is not None:
+            print(f"Baseline submission id: {result.baseline_submission.id}")
+        if result.latest_active_submission is not None:
+            print(f"Current active submission id: {result.latest_active_submission.id}")
+        print(f"Counts for team: {result.counts_for_team}")
+        if result.superseded_by_submission_id is not None:
+            print(f"Superseded by submission id: {result.superseded_by_submission_id}")
+        if result.comparison_profit_delta is not None:
+            print(f"Profit delta vs baseline: {result.comparison_profit_delta}")
+        print(f"Summary: {result.summary_path}")
+        print(f"Workflow metadata: {result.metadata_path}")
         return
 
     parser.error(f"Unknown command: {args.command}")

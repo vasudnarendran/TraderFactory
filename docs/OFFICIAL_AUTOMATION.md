@@ -14,7 +14,7 @@ Instead, the factory can now do that in one command.
 
 ## What This Automation Does
 
-The current command:
+The lower-level command:
 
 ```bash
 python3 -m trader_factory.cli official-submit-imc /path/to/Trader.py
@@ -30,6 +30,22 @@ does the following:
 6. fetches the official signed ZIP download URL
 7. downloads and extracts the ZIP under `generated/official_runs/imc_prosperity/<submission_id>/`
 8. optionally runs the official trade-quality analyzer on the downloaded artifacts
+
+The recommended higher-level command is now:
+
+```bash
+python3 -m trader_factory.cli official-cycle-imc /path/to/Trader.py
+```
+
+That workflow adds the team-aware behavior you asked for:
+
+1. wait until the shared submission queue is available again if a teammate run is still processing
+2. snapshot the current active official submission before uploading
+3. submit the new bot
+4. download the new result bundle
+5. automatically download the previous active submission as the baseline if you did not provide one explicitly
+6. run the official comparison
+7. emit a one-file workflow summary including whether the new run is still the submission that counts
 
 ## Current Requirements
 
@@ -114,12 +130,31 @@ You can also override:
 - `--timeout-seconds`
 - `--skip-analysis`
 
+For the higher-level workflow:
+
+```bash
+python3 -m trader_factory.cli official-cycle-imc /path/to/Trader.py \
+  --queue-poll-seconds 20 \
+  --queue-timeout-seconds 1800
+```
+
+Useful workflow-specific options:
+
+- `--queue-poll-seconds`
+- `--queue-timeout-seconds`
+- `--baseline-log`
+- `--baseline-json`
+- `--skip-analysis`
+
+If `--baseline-log` / `--baseline-json` are omitted, TraderFactory will automatically use the current active official submission before your upload as the comparison baseline.
+
 ## Current Limitations
 
 - this is currently tailored to the IMC Prosperity site flow discovered from the provided HAR
 - it assumes the user has already logged into Prosperity in Chrome
 - it does not yet create a dedicated browser profile or manage login itself
 - it currently targets the algorithm submission flow, not manual challenge rounds
+- there is still a race window between “queue clear” and “upload submitted”; if a teammate uploads in that exact window, Prosperity may still accept whichever submission ends up last
 
 ## Next Likely Improvements
 
