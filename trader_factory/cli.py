@@ -14,7 +14,12 @@ from trader_factory.diagnostics import (
 )
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
 from trader_factory.generation.spec_templates import available_spec_templates, render_spec_template
-from trader_factory.intake import create_intake_workspace, extract_spec_from_brief, render_round_brief_template
+from trader_factory.intake import (
+    create_intake_workspace,
+    extract_spec_with_report,
+    render_extraction_markdown,
+    render_round_brief_template,
+)
 from trader_factory.official import (
     run_imc_prosperity_submission,
     run_imc_prosperity_workflow,
@@ -63,6 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     brief_to_spec = subparsers.add_parser("brief-to-spec", help="Convert a structured round brief JSON into a competition spec JSON.")
     brief_to_spec.add_argument("brief", type=Path, help="Path to the round brief JSON.")
     brief_to_spec.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+    brief_to_spec.add_argument("--report-output", type=Path, default=None, help="Optional markdown extraction report output path.")
 
     intake_workspace = subparsers.add_parser("intake-workspace", help="Create an intake workspace with raw brief, structured brief, and derived spec files.")
     intake_workspace.add_argument("profile", choices=[template.name for template in available_spec_templates()], help="Named intake template profile.")
@@ -353,13 +359,16 @@ def main() -> None:
 
     if args.command == "brief-to-spec":
         payload = json.loads(args.brief.read_text())
-        spec = extract_spec_from_brief(payload)
+        spec, extraction_report = extract_spec_with_report(payload)
         rendered = json.dumps(spec, indent=2) + "\n"
         if args.output is None:
             print(rendered, end="")
         else:
             args.output.write_text(rendered)
             print(f"Wrote derived spec to {args.output}")
+        if args.report_output is not None:
+            args.report_output.write_text(render_extraction_markdown(extraction_report))
+            print(f"Wrote extraction report to {args.report_output}")
         return
 
     if args.command == "intake-workspace":
@@ -374,6 +383,7 @@ def main() -> None:
         print(f"Raw brief: {result.raw_brief_path}")
         print(f"Round brief: {result.round_brief_path}")
         print(f"Derived spec: {result.spec_path}")
+        print(f"Extraction report: {result.extraction_report_path}")
         return
 
     if args.command == "deterministic":

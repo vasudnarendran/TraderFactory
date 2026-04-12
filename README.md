@@ -180,10 +180,11 @@ Recommended intake flow:
 
 1. create an intake workspace or render a brief template
 2. fill the structured `round_brief.json`
-3. run `python3 -m trader_factory.cli brief-to-spec <round_brief.json> --output <spec.json>`
-4. run `python3 -m trader_factory.cli validate-spec <spec.json>`
-5. fix blocked or high-value validation findings
-6. scaffold the project only after the spec is structurally coherent
+3. run `python3 -m trader_factory.cli brief-to-spec <round_brief.json> --output <spec.json> --report-output <brief_extraction.md>`
+4. inspect the extraction report so inferred fields stay explicit
+5. run `python3 -m trader_factory.cli validate-spec <spec.json>`
+6. fix blocked or high-value validation findings
+7. scaffold the project only after the spec is structurally coherent
 
 ## Repo Philosophy
 
@@ -354,7 +355,7 @@ For raw round-brief intake, the more complete workflow is:
 
 ```bash
 python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
-python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json --report-output /tmp/new_round_intake/brief_extraction.md
 python3 -m trader_factory.cli validate-spec /tmp/new_round_intake/spec.json
 ```
 
@@ -391,7 +392,7 @@ If you are starting from a raw brief rather than a finished spec, first run:
 
 ```bash
 python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
-python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json --report-output /tmp/new_round_intake/brief_extraction.md
 ```
 
 ### 3. Run the planning CLI

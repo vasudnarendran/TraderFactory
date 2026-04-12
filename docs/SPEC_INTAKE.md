@@ -57,16 +57,40 @@ For that case, TraderFactory now includes:
 ```bash
 python3 -m trader_factory.cli brief-template generic
 python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
-python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json --report-output /tmp/new_round_intake/brief_extraction.md
 ```
 
 The intended meaning:
 
 - `brief-template`: render a structured `round_brief.json` shape directly
-- `intake-workspace`: create a full folder with `raw_brief.md`, `round_brief.json`, and derived `spec.json`
-- `brief-to-spec`: regenerate the spec after you edit the structured brief
+- `intake-workspace`: create a full folder with `raw_brief.md`, `round_brief.json`, derived `spec.json`, and `brief_extraction.md`
+- `brief-to-spec`: regenerate the spec after you edit the structured brief, plus an extraction report if requested
 
 This is the recommended bridge from raw brief text to validated machine-readable spec.
+
+## Helper Hints
+
+The structured brief now includes helper fields that sit between raw prose and fully typed schema blocks.
+
+Useful product-level helpers:
+
+- `underlying_hint`
+- `related_products_hint`
+- `relationship_style_hint`
+- `target_product_hint`
+- `source_product_hint`
+- `signal_source_hint`
+- `raw_brief_excerpt`
+- `source_notes`
+
+These fields do not replace typed schema blocks. They exist so `brief-to-spec` can conservatively fill obvious missing structure without making the agent hand-author every nested JSON field immediately.
+
+Current inference rules are intentionally conservative:
+
+- typed schema always wins over hints
+- hints win over free-text inference
+- free-text inference is limited to obvious mechanic, regime, execution-style, and single-reference cases
+- all inferred fields are recorded in `brief_extraction.md`
 
 ## Bundled Example Specs
 

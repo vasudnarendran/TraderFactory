@@ -14,6 +14,7 @@ Typical work:
 
 - capture the raw brief in an intake workspace when the round first opens
 - convert `round_brief.json` into `spec.json`
+- inspect `brief_extraction.md` so inferred fields stay auditable
 - validate the round spec
 - scaffold a baseline bot
 - add or refine a strategy sleeve
@@ -62,7 +63,7 @@ python3 -m trader_factory.cli spec-template generic --output /tmp/new_round_spec
 
 python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
 
-python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json --report-output /tmp/new_round_intake/brief_extraction.md
 
 python3 -m trader_factory.cli validate-spec /path/to/spec.json
 
