@@ -53,6 +53,7 @@ The following pieces are already present in this repo scaffold:
 - a strategy capability registry in [trader_factory/core/registry.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/registry.py)
 - a mechanic interpretation and fallback layer in [trader_factory/core/mapping.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/mapping.py)
 - a structured spec-validation layer in [trader_factory/core/validation.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/validation.py)
+- a round-brief extraction layer in [trader_factory/intake/briefs.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/intake/briefs.py)
 - a structured strategy-family taxonomy in [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
 - a baseline planning layer in [trader_factory/generation/bootstrap.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/bootstrap.py)
 - a minimal CLI in [trader_factory/cli.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/cli.py)
@@ -137,7 +138,9 @@ python3 -m pip install -e .
 
 Input expectations by command:
 
-- `plan`, `validate-spec`, and `scaffold-project`: competition spec JSON
+- `spec-template`: competition spec JSON template generation
+- `brief-template` and `intake-workspace`: structured round-brief JSON generation
+- `brief-to-spec`, `plan`, `validate-spec`, and `scaffold-project`: competition spec JSON
 - `deterministic` and `monte-carlo`: trader Python file plus replay CSVs
 - diagnostics: official `.log`, sometimes `.json`
 - `probe-scaffold`: baseline trader Python file
@@ -175,10 +178,12 @@ Spec convention for structural mechanics:
 
 Recommended intake flow:
 
-1. write or update the competition spec JSON
-2. run `python3 -m trader_factory.cli validate-spec <spec.json>`
-3. fix blocked or high-value validation findings
-4. scaffold the project only after the spec is structurally coherent
+1. create an intake workspace or render a brief template
+2. fill the structured `round_brief.json`
+3. run `python3 -m trader_factory.cli brief-to-spec <round_brief.json> --output <spec.json>`
+4. run `python3 -m trader_factory.cli validate-spec <spec.json>`
+5. fix blocked or high-value validation findings
+6. scaffold the project only after the spec is structurally coherent
 
 ## Repo Philosophy
 
@@ -345,6 +350,14 @@ python3 -m trader_factory.cli spec-template generic --output /tmp/new_round_spec
 python3 -m trader_factory.cli spec-template derivative --output /tmp/new_round_spec.json
 ```
 
+For raw round-brief intake, the more complete workflow is:
+
+```bash
+python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli validate-spec /tmp/new_round_intake/spec.json
+```
+
 The bundled examples describe:
 
 - a simple EMERALDS / TOMATOES style round
@@ -373,6 +386,13 @@ python3 -m trader_factory.cli validate-spec /tmp/new_round_spec.json
 ```
 
 This catches missing structural inputs before project generation.
+
+If you are starting from a raw brief rather than a finished spec, first run:
+
+```bash
+python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+```
 
 ### 3. Run the planning CLI
 

@@ -19,12 +19,14 @@ Start with a spec that is good enough to:
 ## Intake Workflow
 
 1. Pick the closest built-in template profile.
-2. Replace placeholder product names, limits, and mechanics with actual round facts.
-3. Use typed fields for structural mechanics whenever possible.
-4. Keep unresolved uncertainty in `unknown_mechanics`, `open_questions`, or `special_rules`.
-5. Run `validate-spec`.
-6. Fix blocked findings.
-7. Scaffold the project only after the spec is structurally coherent.
+2. If the round brief is still raw, create an intake workspace or render a `brief-template`.
+3. Replace placeholder product names, limits, and mechanics with actual round facts.
+4. Use typed fields for structural mechanics whenever possible.
+5. Keep unresolved uncertainty in `unknown_mechanics`, `open_questions`, or `special_rules`.
+6. Convert the structured brief into a spec with `brief-to-spec` if needed.
+7. Run `validate-spec`.
+8. Fix blocked findings.
+9. Scaffold the project only after the spec is structurally coherent.
 
 ## Built-In Template Profiles
 
@@ -45,6 +47,26 @@ Profile guidance:
 - `linked`: use when product fair depends on other traded products or explicit basket composition.
 - `signal_participant`: use when external observations or named participants materially affect fair value or aggression.
 - `conversion_auction`: use when products convert across states or venues, or when timing is dominated by auction windows.
+
+## Structured Brief Workflow
+
+When the round first opens, you often do not have a clean spec yet. You have copied rules text, notes, screenshots, and partial facts.
+
+For that case, TraderFactory now includes:
+
+```bash
+python3 -m trader_factory.cli brief-template generic
+python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+```
+
+The intended meaning:
+
+- `brief-template`: render a structured `round_brief.json` shape directly
+- `intake-workspace`: create a full folder with `raw_brief.md`, `round_brief.json`, and derived `spec.json`
+- `brief-to-spec`: regenerate the spec after you edit the structured brief
+
+This is the recommended bridge from raw brief text to validated machine-readable spec.
 
 ## Bundled Example Specs
 
@@ -109,11 +131,13 @@ If the spec is weak, optimization quality is meaningless.
 
 So the order remains:
 
-1. intake
-2. validation
-3. scaffolding
-4. deterministic replay
-5. Monte Carlo
-6. optimization
-7. official submission
-8. diagnostics or probes if transfer disagrees
+1. raw brief capture
+2. structured brief intake
+3. spec extraction
+4. validation
+5. scaffolding
+6. deterministic replay
+7. Monte Carlo
+8. optimization
+9. official submission
+10. diagnostics or probes if transfer disagrees

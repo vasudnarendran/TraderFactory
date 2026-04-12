@@ -45,3 +45,21 @@ python3 -m trader_factory.cli scaffold-project /tmp/new_round_spec.json --output
 
 Keep `custom_fields` as an escape hatch.
 When the repo already has typed fields such as `observation_channels`, `basket_definition`, `participant_rule`, `signal_rule`, `derivative_contract`, `conversion_rule`, or `auction_rule`, use those first.
+
+## Raw Brief Workflow
+
+If you are starting from copied rules text or a rough summary rather than a spec, prefer the intake workspace:
+
+```bash
+python3 -m trader_factory.cli intake-workspace generic --output-dir /tmp/new_round_intake
+python3 -m trader_factory.cli brief-to-spec /tmp/new_round_intake/round_brief.json --output /tmp/new_round_intake/spec.json
+python3 -m trader_factory.cli validate-spec /tmp/new_round_intake/spec.json
+```
+
+That creates:
+
+- `raw_brief.md`
+- `round_brief.json`
+- `spec.json`
+
+The purpose is to reduce the amount of manual JSON authoring needed when the round first opens.

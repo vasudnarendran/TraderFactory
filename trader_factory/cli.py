@@ -14,6 +14,7 @@ from trader_factory.diagnostics import (
 )
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
 from trader_factory.generation.spec_templates import available_spec_templates, render_spec_template
+from trader_factory.intake import create_intake_workspace, extract_spec_from_brief, render_round_brief_template
 from trader_factory.official import (
     run_imc_prosperity_submission,
     run_imc_prosperity_workflow,
@@ -52,6 +53,22 @@ def build_parser() -> argparse.ArgumentParser:
     spec_template.add_argument("--competition-name", default="NewCompetition", help="Competition name to place in the template.")
     spec_template.add_argument("--round-name", default="round_1", help="Round name to place in the template.")
     spec_template.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+
+    brief_template = subparsers.add_parser("brief-template", help="Render a structured round-brief intake template.")
+    brief_template.add_argument("profile", choices=[template.name for template in available_spec_templates()], help="Named intake template profile.")
+    brief_template.add_argument("--competition-name", default="NewCompetition", help="Competition name to place in the template.")
+    brief_template.add_argument("--round-name", default="round_1", help="Round name to place in the template.")
+    brief_template.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+
+    brief_to_spec = subparsers.add_parser("brief-to-spec", help="Convert a structured round brief JSON into a competition spec JSON.")
+    brief_to_spec.add_argument("brief", type=Path, help="Path to the round brief JSON.")
+    brief_to_spec.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+
+    intake_workspace = subparsers.add_parser("intake-workspace", help="Create an intake workspace with raw brief, structured brief, and derived spec files.")
+    intake_workspace.add_argument("profile", choices=[template.name for template in available_spec_templates()], help="Named intake template profile.")
+    intake_workspace.add_argument("--competition-name", default="NewCompetition", help="Competition name to place in the workspace files.")
+    intake_workspace.add_argument("--round-name", default="round_1", help="Round name to place in the workspace files.")
+    intake_workspace.add_argument("--output-dir", type=Path, default=None, help="Optional intake workspace directory.")
 
     deterministic = subparsers.add_parser("deterministic", help="Run TraderFactory deterministic replay.")
     deterministic.add_argument("bot", type=Path, help="Path to the trader Python file.")
@@ -318,6 +335,45 @@ def main() -> None:
         else:
             args.output.write_text(rendered)
             print(f"Wrote spec template to {args.output}")
+        return
+
+    if args.command == "brief-template":
+        payload = render_round_brief_template(
+            args.profile,
+            competition_name=args.competition_name,
+            round_name=args.round_name,
+        )
+        rendered = json.dumps(payload, indent=2) + "\n"
+        if args.output is None:
+            print(rendered, end="")
+        else:
+            args.output.write_text(rendered)
+            print(f"Wrote round brief template to {args.output}")
+        return
+
+    if args.command == "brief-to-spec":
+        payload = json.loads(args.brief.read_text())
+        spec = extract_spec_from_brief(payload)
+        rendered = json.dumps(spec, indent=2) + "\n"
+        if args.output is None:
+            print(rendered, end="")
+        else:
+            args.output.write_text(rendered)
+            print(f"Wrote derived spec to {args.output}")
+        return
+
+    if args.command == "intake-workspace":
+        result = create_intake_workspace(
+            args.profile,
+            competition_name=args.competition_name,
+            round_name=args.round_name,
+            output_dir=args.output_dir,
+        )
+        print(f"Workspace: {result.output_dir}")
+        print(f"README: {result.readme_path}")
+        print(f"Raw brief: {result.raw_brief_path}")
+        print(f"Round brief: {result.round_brief_path}")
+        print(f"Derived spec: {result.spec_path}")
         return
 
     if args.command == "deterministic":
