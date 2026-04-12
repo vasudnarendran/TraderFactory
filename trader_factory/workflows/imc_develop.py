@@ -10,6 +10,7 @@ from trader_factory.core.paths import ensure_dir, generated_root
 from trader_factory.official import ImcProsperityWorkflowResult, run_imc_prosperity_workflow
 from trader_factory.simulation import run_deterministic, run_monte_carlo
 from trader_factory.workflows.baselines import ImcBaselinePolicy, load_imc_baseline_policy
+from trader_factory.workflows.gates import ImcGateEvaluation, ImcGatePolicy, evaluate_imc_gate_policy, load_imc_gate_policy, resolve_imc_gate_policy
 
 
 @dataclass(slots=True)
@@ -49,6 +50,8 @@ class ImcDevelopCycleResult:
     local_passed: bool
     submitted_officially: bool
     baseline_policy: ImcBaselinePolicy | None
+    gate_policy: ImcGatePolicy
+    gate_evaluation: ImcGateEvaluation
     deterministic: DeterministicGateResult
     monte_carlo: MonteCarloGateResult
     official_result: ImcProsperityWorkflowResult | None
@@ -212,6 +215,8 @@ def _write_summary(
     force_submit: bool,
     dry_run: bool,
     baseline_policy: ImcBaselinePolicy | None,
+    gate_policy: ImcGatePolicy,
+    gate_evaluation: ImcGateEvaluation,
     deterministic: DeterministicGateResult,
     monte_carlo: MonteCarloGateResult,
     official_result: ImcProsperityWorkflowResult | None,
@@ -230,6 +235,20 @@ def _write_summary(
         f"- Policy compare bot: `{baseline_policy.compare_bot_path if baseline_policy else 'none'}`",
         f"- Policy official baseline log: `{baseline_policy.official_baseline_log if baseline_policy else 'none'}`",
         f"- Policy official baseline json: `{baseline_policy.official_baseline_json if baseline_policy else 'none'}`",
+        "",
+        "## Gate Policy",
+        f"- Round id: `{gate_policy.round_id}`",
+        f"- Require deterministic: `{gate_policy.require_deterministic}`",
+        f"- Require Monte Carlo: `{gate_policy.require_monte_carlo}`",
+        f"- Deterministic min total delta: `{gate_policy.deterministic_min_total_delta}`",
+        f"- Monte Carlo min mean delta: `{gate_policy.mc_min_mean_delta}`",
+        f"- Monte Carlo min P10 delta: `{gate_policy.mc_min_p10_delta}`",
+        f"- Plausible min mean delta: `{gate_policy.mc_min_plausible_mean_delta}`",
+        f"- Plausible min P10 delta: `{gate_policy.mc_min_plausible_p10_delta}`",
+        f"- Notes: `{gate_policy.notes or ''}`",
+        "",
+        "## Gate Evaluation",
+        f"- Overall passed: `{gate_evaluation.passed}`",
         "",
         "## Deterministic Gate",
         f"- Ran: `{deterministic.ran}`",
@@ -261,6 +280,11 @@ def _write_summary(
             f"- Report: `{monte_carlo.report_markdown_path or 'none'}`",
         ]
     )
+    lines.extend(["", "## Gate Checks"])
+    for check in gate_evaluation.checks:
+        lines.append(
+            f"- `{check.name}`: passed `{check.passed}`, actual `{check.actual}`, minimum `{check.min_required}`, reason `{check.reason}`"
+        )
     lines.extend(["", "## Official"])
     if official_result is None:
         lines.append("- Official submission was skipped.")
@@ -291,13 +315,13 @@ def run_imc_develop_cycle(
     deterministic_days: list[int] | tuple[int, ...] = (-1, -2),
     skip_deterministic: bool = False,
     skip_monte_carlo: bool = False,
-    deterministic_min_total_delta: float | None = 0.0,
+    deterministic_min_total_delta: float | None = None,
     mc_families: list[str] | tuple[str, ...] | None = None,
     mc_samples_per_family: int = 2,
     mc_seed: int = 52,
-    mc_min_mean_delta: float | None = 0.0,
+    mc_min_mean_delta: float | None = None,
     mc_min_p10_delta: float | None = None,
-    mc_min_plausible_mean_delta: float | None = 0.0,
+    mc_min_plausible_mean_delta: float | None = None,
     mc_min_plausible_p10_delta: float | None = None,
     force_submit: bool = False,
     dry_run: bool = False,
@@ -316,6 +340,18 @@ def run_imc_develop_cycle(
 ) -> ImcDevelopCycleResult:
     candidate_bot = Path(bot_path).expanduser().resolve()
     baseline_policy = load_imc_baseline_policy(round_id)
+    persisted_gate_policy = load_imc_gate_policy(round_id)
+    gate_policy = resolve_imc_gate_policy(
+        round_id=round_id,
+        base_policy=persisted_gate_policy,
+        require_deterministic=(False if skip_deterministic else None),
+        require_monte_carlo=(False if skip_monte_carlo else None),
+        deterministic_min_total_delta=deterministic_min_total_delta,
+        mc_min_mean_delta=mc_min_mean_delta,
+        mc_min_p10_delta=mc_min_p10_delta,
+        mc_min_plausible_mean_delta=mc_min_plausible_mean_delta,
+        mc_min_plausible_p10_delta=mc_min_plausible_p10_delta,
+    )
     compare_bot = Path(compare_bot_path).expanduser().resolve() if compare_bot_path else None
     if compare_bot is None and baseline_policy is not None:
         compare_bot = baseline_policy.compare_bot_path
@@ -338,7 +374,7 @@ def run_imc_develop_cycle(
         candidate_totals_by_day={},
         baseline_totals_by_day={},
         total_delta=None,
-        min_required_delta=deterministic_min_total_delta,
+        min_required_delta=gate_policy.deterministic_min_total_delta,
     )
     if not skip_deterministic:
         deterministic_result = _run_deterministic_gate(
@@ -348,7 +384,7 @@ def run_imc_develop_cycle(
             output_dir=root / "deterministic",
             data_root=resolved_data_root,
             dataset_tag=dataset_tag,
-            min_required_delta=(deterministic_min_total_delta if compare_bot is not None else None),
+            min_required_delta=(gate_policy.deterministic_min_total_delta if compare_bot is not None else None),
         )
 
     monte_carlo_result = MonteCarloGateResult(
@@ -361,10 +397,10 @@ def run_imc_develop_cycle(
         p10_delta=None,
         plausible_mean_delta=None,
         plausible_p10_delta=None,
-        min_mean_delta=mc_min_mean_delta,
-        min_p10_delta=mc_min_p10_delta,
-        min_plausible_mean_delta=mc_min_plausible_mean_delta,
-        min_plausible_p10_delta=mc_min_plausible_p10_delta,
+        min_mean_delta=gate_policy.mc_min_mean_delta,
+        min_p10_delta=gate_policy.mc_min_p10_delta,
+        min_plausible_mean_delta=gate_policy.mc_min_plausible_mean_delta,
+        min_plausible_p10_delta=gate_policy.mc_min_plausible_p10_delta,
     )
     if not skip_monte_carlo:
         monte_carlo_result = _run_monte_carlo_gate(
@@ -377,14 +413,24 @@ def run_imc_develop_cycle(
             families=list(mc_families) if mc_families is not None else None,
             samples_per_family=mc_samples_per_family,
             seed=mc_seed,
-            min_mean_delta=(mc_min_mean_delta if compare_bot is not None else None),
-            min_p10_delta=(mc_min_p10_delta if compare_bot is not None else None),
-            min_plausible_mean_delta=(mc_min_plausible_mean_delta if compare_bot is not None else None),
-            min_plausible_p10_delta=(mc_min_plausible_p10_delta if compare_bot is not None else None),
+            min_mean_delta=(gate_policy.mc_min_mean_delta if compare_bot is not None else None),
+            min_p10_delta=(gate_policy.mc_min_p10_delta if compare_bot is not None else None),
+            min_plausible_mean_delta=(gate_policy.mc_min_plausible_mean_delta if compare_bot is not None else None),
+            min_plausible_p10_delta=(gate_policy.mc_min_plausible_p10_delta if compare_bot is not None else None),
             quick=True,
         )
 
-    local_passed = deterministic_result.passed and monte_carlo_result.passed
+    gate_evaluation = evaluate_imc_gate_policy(
+        policy=gate_policy,
+        deterministic_ran=deterministic_result.ran,
+        deterministic_total_delta=deterministic_result.total_delta,
+        monte_carlo_ran=monte_carlo_result.ran,
+        mc_mean_delta=monte_carlo_result.mean_delta,
+        mc_p10_delta=monte_carlo_result.p10_delta,
+        mc_plausible_mean_delta=monte_carlo_result.plausible_mean_delta,
+        mc_plausible_p10_delta=monte_carlo_result.plausible_p10_delta,
+    )
+    local_passed = gate_evaluation.passed
     official_result: ImcProsperityWorkflowResult | None = None
     submitted_officially = False
     if (local_passed or force_submit) and not dry_run:
@@ -414,6 +460,8 @@ def run_imc_develop_cycle(
         force_submit=force_submit,
         dry_run=dry_run,
         baseline_policy=baseline_policy,
+        gate_policy=gate_policy,
+        gate_evaluation=gate_evaluation,
         deterministic=deterministic_result,
         monte_carlo=monte_carlo_result,
         official_result=official_result,
@@ -422,6 +470,11 @@ def run_imc_develop_cycle(
         "candidate_bot": str(candidate_bot),
         "compare_bot": str(compare_bot) if compare_bot else None,
         "baseline_policy": baseline_policy.to_dict() if baseline_policy else None,
+        "gate_policy": gate_policy.to_dict(),
+        "gate_evaluation": {
+            "passed": gate_evaluation.passed,
+            "checks": [asdict(check) for check in gate_evaluation.checks],
+        },
         "local_passed": local_passed,
         "submitted_officially": submitted_officially,
         "force_submit": force_submit,
@@ -448,6 +501,8 @@ def run_imc_develop_cycle(
         local_passed=local_passed,
         submitted_officially=submitted_officially,
         baseline_policy=baseline_policy,
+        gate_policy=gate_policy,
+        gate_evaluation=gate_evaluation,
         deterministic=deterministic_result,
         monte_carlo=monte_carlo_result,
         official_result=official_result,

@@ -1,0 +1,71 @@
+{
+  "name": "Prosperity",
+  "round_name": "future_linked_example",
+  "description": "Example intake spec for a future round with linked and basket-style products.",
+  "mechanics": [
+    {
+      "name": "pair_linked",
+      "description": "Product fair depends on one or more related products.",
+      "tags": ["spread_relationship", "basket"]
+    }
+  ],
+  "products": [
+    {
+      "symbol": "STRAWBERRIES",
+      "position_limit": 60,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["market_making", "inventory_sensitive"],
+      "notes": "First linked leg."
+    },
+    {
+      "symbol": "CHOCOLATE",
+      "position_limit": 60,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["market_making", "inventory_sensitive"],
+      "notes": "Second linked leg."
+    },
+    {
+      "symbol": "GIFT_BASKET",
+      "position_limit": 30,
+      "tick_size": 1.0,
+      "price_regime": "linked",
+      "execution_style": "mixed",
+      "mechanics": ["basket", "pair_linked"],
+      "basket_definition": {
+        "components": [
+          {
+            "symbol": "STRAWBERRIES",
+            "weight": 2.0
+          },
+          {
+            "symbol": "CHOCOLATE",
+            "weight": -1.0
+          }
+        ],
+        "divisor": 1.0,
+        "fair_offset": 0.0
+      },
+      "notes": "Example basket product driven by explicit component weights."
+    }
+  ],
+  "relationships": [
+    {
+      "left": "STRAWBERRIES",
+      "right": "CHOCOLATE",
+      "relationship": "spread",
+      "hedge_ratio": 1.0,
+      "description": "Optional pair relation used as an explicit linked-product example."
+    }
+  ],
+  "special_rules": [],
+  "constraints": [],
+  "open_questions": [],
+  "unknown_mechanics": [],
+  "research_goals": [
+    "Confirm whether linked fair should be computed from tradeable mids or a hidden settlement process."
+  ]
+}

@@ -30,6 +30,43 @@ DATAMODEL_PATH = REPO_ROOT / "trader_factory" / "core" / "datamodel.py"
 DENOMINATION = "XIRECS"
 PRICE_FILE_RE = re.compile(r"^prices_(.+)_day_(-?\d+)\.csv$")
 TRADE_FILE_RE = re.compile(r"^trades_(.+)_day_(-?\d+)\.csv$")
+OBSERVATION_FILE_RE = re.compile(r"^(?:observations|conversion_observations|plain_observations)_(.+)_day_(-?\d+)\.csv$")
+
+ObservationScalar = int | float
+
+INLINE_PLAIN_FIELD_ALIASES = (
+    "observation_value",
+    "plain_observation_value",
+    "signal_value",
+    "observationValue",
+    "plainValueObservation",
+    "plainValue",
+)
+SIDECAR_PLAIN_FIELD_ALIASES = INLINE_PLAIN_FIELD_ALIASES + (
+    "plain_value",
+    "signal",
+    "signalValue",
+    "value",
+)
+
+INLINE_CONVERSION_FIELD_ALIASES = {
+    "bidPrice": ("observation_bid_price", "conversion_bid_price", "observationBidPrice", "conversionBidPrice", "bidPrice"),
+    "askPrice": ("observation_ask_price", "conversion_ask_price", "observationAskPrice", "conversionAskPrice", "askPrice"),
+    "transportFees": ("transport_fees", "conversion_transport_fees", "observation_transport_fees", "transportFees"),
+    "exportTariff": ("export_tariff", "conversion_export_tariff", "observation_export_tariff", "exportTariff"),
+    "importTariff": ("import_tariff", "conversion_import_tariff", "observation_import_tariff", "importTariff"),
+    "sunlight": ("sunlight", "observation_sunlight", "conversion_sunlight"),
+    "humidity": ("humidity", "observation_humidity", "conversion_humidity"),
+}
+SIDECAR_CONVERSION_FIELD_ALIASES = {
+    "bidPrice": INLINE_CONVERSION_FIELD_ALIASES["bidPrice"] + ("bid_price", "bid"),
+    "askPrice": INLINE_CONVERSION_FIELD_ALIASES["askPrice"] + ("ask_price", "ask"),
+    "transportFees": INLINE_CONVERSION_FIELD_ALIASES["transportFees"],
+    "exportTariff": INLINE_CONVERSION_FIELD_ALIASES["exportTariff"],
+    "importTariff": INLINE_CONVERSION_FIELD_ALIASES["importTariff"],
+    "sunlight": INLINE_CONVERSION_FIELD_ALIASES["sunlight"],
+    "humidity": INLINE_CONVERSION_FIELD_ALIASES["humidity"],
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -173,6 +210,7 @@ def ensure_imports(bot_path: Path):
     return (
         datamodel.Listing,
         datamodel.Observation,
+        datamodel.ConversionObservation,
         datamodel.Order,
         datamodel.OrderDepth,
         datamodel.Trade,
@@ -226,10 +264,135 @@ class Fill:
     source_order_price: int
 
 
-def parse_price_file(path: Path) -> Dict[Tuple[int, int], Dict[str, Snapshot]]:
+def detect_csv_delimiter(path: Path) -> str:
+    sample = path.read_text(errors="ignore")[:4096]
+    if not sample:
+        return ";"
+    try:
+        return csv.Sniffer().sniff(sample, delimiters=";,").delimiter
+    except csv.Error:
+        return ";"
+
+
+def _coerce_float(value: object) -> Optional[float]:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return float(text)
+
+
+def _coerce_int(value: object) -> Optional[int]:
+    parsed = _coerce_float(value)
+    if parsed is None:
+        return None
+    return int(parsed)
+
+
+def _coerce_observation_scalar(value: object) -> Optional[ObservationScalar]:
+    parsed = _coerce_float(value)
+    if parsed is None:
+        return None
+    if math.isfinite(parsed) and float(int(parsed)) == parsed:
+        return int(parsed)
+    return parsed
+
+
+def _first_present_float(row: Dict[str, object], aliases: Tuple[str, ...]) -> Optional[float]:
+    for alias in aliases:
+        if alias not in row:
+            continue
+        parsed = _coerce_float(row.get(alias))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _first_present_int(row: Dict[str, object], aliases: Tuple[str, ...]) -> Optional[int]:
+    for alias in aliases:
+        if alias not in row:
+            continue
+        parsed = _coerce_int(row.get(alias))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _first_present_scalar(row: Dict[str, object], aliases: Tuple[str, ...]) -> Optional[ObservationScalar]:
+    for alias in aliases:
+        if alias not in row:
+            continue
+        parsed = _coerce_observation_scalar(row.get(alias))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _observation_key(row: Dict[str, object]) -> str:
+    return str(
+        row.get("product")
+        or row.get("symbol")
+        or row.get("observation_key")
+        or row.get("signal_source")
+        or ""
+    ).strip()
+
+
+def _parse_plain_observation_row(row: Dict[str, object], aliases: Tuple[str, ...]) -> Optional[ObservationScalar]:
+    return _first_present_scalar(row, aliases)
+
+
+def _parse_conversion_observation_row(row: Dict[str, object], aliases: Dict[str, Tuple[str, ...]]) -> Optional[Dict[str, float]]:
+    bid_price = _first_present_float(row, aliases["bidPrice"])
+    ask_price = _first_present_float(row, aliases["askPrice"])
+    if bid_price is None and ask_price is None:
+        return None
+    if bid_price is None or ask_price is None:
+        return None
+    return {
+        "bidPrice": bid_price,
+        "askPrice": ask_price,
+        "transportFees": _first_present_float(row, aliases["transportFees"]) or 0.0,
+        "exportTariff": _first_present_float(row, aliases["exportTariff"]) or 0.0,
+        "importTariff": _first_present_float(row, aliases["importTariff"]) or 0.0,
+        "sunlight": _first_present_float(row, aliases["sunlight"]) or 0.0,
+        "humidity": _first_present_float(row, aliases["humidity"]) or 0.0,
+    }
+
+
+def _merge_conversion_observations(
+    target: Dict[Tuple[int, int], Dict[str, Dict[str, float]]],
+    incoming: Dict[Tuple[int, int], Dict[str, Dict[str, float]]],
+) -> None:
+    for key, product_map in incoming.items():
+        slot = target.setdefault(key, {})
+        for product, observation in product_map.items():
+            slot[product] = dict(observation)
+
+
+def _merge_plain_observations(
+    target: Dict[Tuple[int, int], Dict[str, ObservationScalar]],
+    incoming: Dict[Tuple[int, int], Dict[str, ObservationScalar]],
+) -> None:
+    for key, product_map in incoming.items():
+        slot = target.setdefault(key, {})
+        for product, observation in product_map.items():
+            slot[product] = observation
+
+
+def parse_price_file(
+    path: Path,
+) -> Tuple[
+    Dict[Tuple[int, int], Dict[str, Snapshot]],
+    Dict[Tuple[int, int], Dict[str, ObservationScalar]],
+    Dict[Tuple[int, int], Dict[str, Dict[str, float]]],
+]:
     grouped: Dict[Tuple[int, int], Dict[str, Snapshot]] = {}
-    with path.open() as handle:
-        reader = csv.DictReader(handle, delimiter=";")
+    plain_observations: Dict[Tuple[int, int], Dict[str, ObservationScalar]] = {}
+    conversion_observations: Dict[Tuple[int, int], Dict[str, Dict[str, float]]] = {}
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter=detect_csv_delimiter(path))
         for row in reader:
             day = int(row["day"])
             timestamp = int(row["timestamp"])
@@ -258,13 +421,19 @@ def parse_price_file(path: Path) -> Dict[Tuple[int, int], Dict[str, Snapshot]]:
                 ask_levels=ask_levels,
                 mid_price=float(row["mid_price"]),
             )
-    return grouped
+            plain_observation = _parse_plain_observation_row(row, INLINE_PLAIN_FIELD_ALIASES)
+            if plain_observation is not None:
+                plain_observations.setdefault((day, timestamp), {})[product] = plain_observation
+            observation = _parse_conversion_observation_row(row, INLINE_CONVERSION_FIELD_ALIASES)
+            if observation is not None:
+                conversion_observations.setdefault((day, timestamp), {})[product] = observation
+    return grouped, plain_observations, conversion_observations
 
 
 def parse_trade_file(path: Path, TradeClass) -> Dict[Tuple[int, str], List]:
     trades: Dict[Tuple[int, str], List] = {}
-    with path.open() as handle:
-        reader = csv.DictReader(handle, delimiter=";")
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter=detect_csv_delimiter(path))
         for row in reader:
             timestamp = int(row["timestamp"])
             product = row["symbol"]
@@ -280,9 +449,44 @@ def parse_trade_file(path: Path, TradeClass) -> Dict[Tuple[int, str], List]:
     return trades
 
 
+def parse_observation_file(
+    path: Path,
+) -> Tuple[
+    Dict[Tuple[int, int], Dict[str, ObservationScalar]],
+    Dict[Tuple[int, int], Dict[str, Dict[str, float]]],
+]:
+    plain_grouped: Dict[Tuple[int, int], Dict[str, ObservationScalar]] = {}
+    conversion_grouped: Dict[Tuple[int, int], Dict[str, Dict[str, float]]] = {}
+    match = OBSERVATION_FILE_RE.match(path.name)
+    default_day = int(match.group(2)) if match else None
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter=detect_csv_delimiter(path))
+        for row in reader:
+            observation_key = _observation_key(row)
+            if not observation_key:
+                continue
+            timestamp = _first_present_int(row, ("timestamp",))
+            if timestamp is None:
+                raise ValueError(f"Observation file {path} is missing a timestamp for observation {observation_key}")
+            day = _first_present_int(row, ("day",))
+            if day is None:
+                if default_day is None:
+                    raise ValueError(f"Observation file {path} must provide day either in the filename or each row")
+                day = default_day
+            plain_observation = _parse_plain_observation_row(row, SIDECAR_PLAIN_FIELD_ALIASES)
+            if plain_observation is not None:
+                plain_grouped.setdefault((day, timestamp), {})[observation_key] = plain_observation
+            observation = _parse_conversion_observation_row(row, SIDECAR_CONVERSION_FIELD_ALIASES)
+            if observation is not None:
+                conversion_grouped.setdefault((day, timestamp), {})[observation_key] = observation
+    return plain_grouped, conversion_grouped
+
+
 def load_market(ListingClass, TradeClass, data_dir: Path, dataset_tag: str, day_filter: Optional[int] = None):
     prices_by_key: Dict[Tuple[int, int], Dict[str, Snapshot]] = {}
     market_trades_by_day: Dict[int, Dict[Tuple[int, str], List]] = {}
+    plain_observations_by_key: Dict[Tuple[int, int], Dict[str, ObservationScalar]] = {}
+    conversion_observations_by_key: Dict[Tuple[int, int], Dict[str, Dict[str, float]]] = {}
 
     for price_path in sorted(data_dir.iterdir()):
         if not price_path.is_file():
@@ -293,8 +497,10 @@ def load_market(ListingClass, TradeClass, data_dir: Path, dataset_tag: str, day_
         day = int(match.group(2))
         if day_filter is not None and day != day_filter:
             continue
-        file_prices = parse_price_file(price_path)
+        file_prices, file_plain_observations, file_conversion_observations = parse_price_file(price_path)
         prices_by_key.update(file_prices)
+        _merge_plain_observations(plain_observations_by_key, file_plain_observations)
+        _merge_conversion_observations(conversion_observations_by_key, file_conversion_observations)
 
     for trade_path in sorted(data_dir.iterdir()):
         if not trade_path.is_file():
@@ -307,12 +513,46 @@ def load_market(ListingClass, TradeClass, data_dir: Path, dataset_tag: str, day_
             continue
         market_trades_by_day[day] = parse_trade_file(trade_path, TradeClass)
 
+    for observation_path in sorted(data_dir.iterdir()):
+        if not observation_path.is_file():
+            continue
+        match = OBSERVATION_FILE_RE.match(observation_path.name)
+        if not match or match.group(1) != dataset_tag:
+            continue
+        day = int(match.group(2))
+        if day_filter is not None and day != day_filter:
+            continue
+        file_plain_observations, file_conversion_observations = parse_observation_file(observation_path)
+        _merge_plain_observations(plain_observations_by_key, file_plain_observations)
+        _merge_conversion_observations(conversion_observations_by_key, file_conversion_observations)
+
     listings = {
         product: ListingClass(symbol=product, product=product, denomination=DENOMINATION)
         for product in sorted({snapshot.product for snapshots in prices_by_key.values() for snapshot in snapshots.values()})
     }
     ordered_keys = sorted(prices_by_key.keys())
-    return prices_by_key, market_trades_by_day, listings, ordered_keys
+    return prices_by_key, market_trades_by_day, plain_observations_by_key, conversion_observations_by_key, listings, ordered_keys
+
+
+def build_observations(
+    ObservationClass,
+    ConversionObservationClass,
+    plain_observations: Optional[Dict[str, ObservationScalar]] = None,
+    conversion_observations: Optional[Dict[str, Dict[str, float]]] = None,
+):
+    plain_values = dict(plain_observations or {})
+    converted = {}
+    for product, values in (conversion_observations or {}).items():
+        converted[product] = ConversionObservationClass(
+            bidPrice=float(values["bidPrice"]),
+            askPrice=float(values["askPrice"]),
+            transportFees=float(values["transportFees"]),
+            exportTariff=float(values["exportTariff"]),
+            importTariff=float(values["importTariff"]),
+            sunlight=float(values["sunlight"]),
+            humidity=float(values["humidity"]),
+        )
+    return ObservationClass(plain_values, converted)
 
 
 def snapshot_to_order_depth(snapshot: Snapshot, OrderDepthClass):
@@ -510,12 +750,27 @@ def main() -> None:
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass = ensure_imports(bot_path)
+    (
+        ListingClass,
+        ObservationClass,
+        ConversionObservationClass,
+        OrderClass,
+        OrderDepthClass,
+        TradeClass,
+        TradingStateClass,
+    ) = ensure_imports(bot_path)
     trader = load_trader(bot_path)
 
     data_dir = resolve_data_dir(args.data_root or None)
     dataset_tag = resolve_dataset_tag(data_dir, args.dataset_tag or None)
-    prices_by_key, market_trades_by_day, listings, ordered_keys = load_market(
+    (
+        prices_by_key,
+        market_trades_by_day,
+        plain_observations_by_key,
+        conversion_observations_by_key,
+        listings,
+        ordered_keys,
+    ) = load_market(
         ListingClass,
         TradeClass,
         data_dir,
@@ -541,6 +796,10 @@ def main() -> None:
     product_history: Dict[str, Dict[str, List[float]]] = {
         product: {"position": [], "pnl": [], "mid": []} for product in products
     }
+    steps_with_plain_observations = 0
+    plain_observation_keys: set[str] = set()
+    steps_with_conversion_observations = 0
+    products_with_conversion_observations: set[str] = set()
 
     for day, timestamp in ordered_keys:
         if current_day is None:
@@ -590,7 +849,20 @@ def main() -> None:
             product: snapshot_to_order_depth(snapshots[product], OrderDepthClass) for product in products
         }
         market_trades = build_market_trades(products, day_trades, timestamp)
-        observations = ObservationClass({}, {})
+        plain_observations = plain_observations_by_key.get((day, timestamp), {})
+        if plain_observations:
+            steps_with_plain_observations += 1
+            plain_observation_keys.update(plain_observations)
+        conversion_observations = conversion_observations_by_key.get((day, timestamp), {})
+        if conversion_observations:
+            steps_with_conversion_observations += 1
+            products_with_conversion_observations.update(conversion_observations)
+        observations = build_observations(
+            ObservationClass,
+            ConversionObservationClass,
+            plain_observations,
+            conversion_observations,
+        )
 
         state = TradingStateClass(
             traderData=trader_data,
@@ -757,6 +1029,10 @@ def main() -> None:
         f"Dataset tag: {dataset_tag}",
         f"Data sources: {data_dir / f'prices_{dataset_tag}_day_{args.day}.csv'} and {data_dir / f'trades_{dataset_tag}_day_{args.day}.csv'}",
         f"Steps: {len(step_rows)}",
+        f"Steps with plain observations: {steps_with_plain_observations}",
+        f"Plain observation keys: {', '.join(sorted(plain_observation_keys)) or '(none)'}",
+        f"Steps with conversion observations: {steps_with_conversion_observations}",
+        f"Products with conversion observations: {', '.join(sorted(products_with_conversion_observations)) or '(none)'}",
         f"Total fills: {len(fill_rows)}",
         f"Final total PnL: {total_pnl_series[-1]:.2f}" if total_pnl_series else "Final total PnL: 0.00",
         f"Best total PnL: {max(total_pnl_series):.2f}" if total_pnl_series else "Best total PnL: 0.00",

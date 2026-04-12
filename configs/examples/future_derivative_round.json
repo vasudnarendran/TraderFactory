@@ -1,0 +1,57 @@
+{
+  "name": "Prosperity",
+  "round_name": "future_derivative_example",
+  "description": "Example intake spec for a future round with one underlying product and one vanilla option-style derivative.",
+  "mechanics": [
+    {
+      "name": "anchored",
+      "description": "Underlying product trades around a relatively stable fair value.",
+      "tags": ["stable_fair", "market_making"]
+    },
+    {
+      "name": "option",
+      "description": "Derivative product has a nonlinear payoff against the underlying.",
+      "tags": ["expiry"]
+    }
+  ],
+  "products": [
+    {
+      "symbol": "COCONUT",
+      "position_limit": 100,
+      "tick_size": 1.0,
+      "price_regime": "anchored",
+      "execution_style": "mixed",
+      "mechanics": ["anchored", "market_making", "inventory_sensitive"],
+      "notes": "Baseline underlying product."
+    },
+    {
+      "symbol": "COCONUT_CALL_100",
+      "position_limit": 20,
+      "tick_size": 1.0,
+      "price_regime": "derivative",
+      "execution_style": "mixed",
+      "mechanics": ["option", "expiry"],
+      "derivative_contract": {
+        "underlying": "COCONUT",
+        "option_kind": "call",
+        "strike": 100.0,
+        "time_to_expiry_years": 0.25,
+        "volatility": 0.25,
+        "risk_free_rate": 0.0,
+        "carry_rate": 0.0,
+        "expiry_style": "european"
+      },
+      "notes": "Example vanilla option contract."
+    }
+  ],
+  "relationships": [],
+  "special_rules": [],
+  "constraints": [
+    "Confirm settlement convention before relying on option-pricing outputs."
+  ],
+  "open_questions": [],
+  "unknown_mechanics": [],
+  "research_goals": [
+    "Separate derivative-pricing assumptions from execution-transfer questions."
+  ]
+}

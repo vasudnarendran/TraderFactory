@@ -1,0 +1,69 @@
+{
+  "name": "Prosperity",
+  "round_name": "future_signal_participant_example",
+  "description": "Example intake spec for a future round with explicit observation feeds and named participants.",
+  "mechanics": [
+    {
+      "name": "external_signal",
+      "description": "Product fair depends on a plain observation feed.",
+      "tags": ["signal"]
+    },
+    {
+      "name": "named_participant",
+      "description": "Specific participant identities carry information.",
+      "tags": ["flow_following", "informed_trader"]
+    }
+  ],
+  "products": [
+    {
+      "symbol": "WEATHER_FRUIT",
+      "position_limit": 40,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["external_signal"],
+      "observation_channels": [
+        {
+          "key": "WEATHER_SIGNAL",
+          "kind": "plain",
+          "role": "signal",
+          "description": "External weather feed observed at replay time."
+        }
+      ],
+      "signal_rule": {
+        "source_key": "WEATHER_SIGNAL",
+        "latency_hint": "one_step",
+        "staleness_limit": 3,
+        "interpretation_mode": "fair_shift"
+      },
+      "notes": "Example signal-driven product."
+    },
+    {
+      "symbol": "FLOW_FRUIT",
+      "position_limit": 40,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["named_participant", "flow_following"],
+      "participant_rule": {
+        "tracked_participants": ["Olivia", "Mia"],
+        "follow_mode": "fade",
+        "participant_weights": {
+          "Olivia": 2.0,
+          "Mia": 1.0
+        },
+        "signal_horizon": 5
+      },
+      "notes": "Example named-participant product."
+    }
+  ],
+  "relationships": [],
+  "special_rules": [],
+  "constraints": [],
+  "open_questions": [],
+  "unknown_mechanics": [],
+  "research_goals": [
+    "Confirm signal units and latency.",
+    "Confirm how participant identity appears in the official feed."
+  ]
+}

@@ -51,6 +51,8 @@ class ReplayDay:
     ordered_timestamps: list[int]
     snapshots_by_timestamp: dict[int, dict[str, Any]]
     trades_by_timestamp_product: dict[tuple[int, str], list[Any]]
+    plain_observations_by_timestamp: dict[int, dict[str, int | float]]
+    conversion_observations_by_timestamp: dict[int, dict[str, dict[str, float]]]
     step_interval: int
     source_timestamps: list[int]
 
@@ -219,6 +221,8 @@ def _build_original_day(
     day: int,
     prices_by_key: dict[tuple[int, int], dict[str, Any]],
     market_trades_by_day: dict[int, dict[tuple[int, str], list[Any]]],
+    plain_observations_by_key: dict[tuple[int, int], dict[str, int | float]],
+    conversion_observations_by_key: dict[tuple[int, int], dict[str, dict[str, float]]],
     ordered_keys: list[tuple[int, int]],
 ) -> ReplayDay:
     ordered_timestamps = [timestamp for price_day, timestamp in ordered_keys if price_day == day]
@@ -237,12 +241,24 @@ def _build_original_day(
         (timestamp, product): list(trades)
         for (timestamp, product), trades in market_trades_by_day.get(day, {}).items()
     }
+    plain_observations_by_timestamp = {
+        timestamp: dict(plain_observations_by_key[(day, timestamp)])
+        for timestamp in ordered_timestamps
+        if (day, timestamp) in plain_observations_by_key
+    }
+    conversion_observations_by_timestamp = {
+        timestamp: {product: dict(values) for product, values in conversion_observations_by_key[(day, timestamp)].items()}
+        for timestamp in ordered_timestamps
+        if (day, timestamp) in conversion_observations_by_key
+    }
 
     return ReplayDay(
         day=day,
         ordered_timestamps=ordered_timestamps,
         snapshots_by_timestamp=snapshots_by_timestamp,
         trades_by_timestamp_product=trades_by_timestamp_product,
+        plain_observations_by_timestamp=plain_observations_by_timestamp,
+        conversion_observations_by_timestamp=conversion_observations_by_timestamp,
         step_interval=step_interval,
         source_timestamps=ordered_timestamps,
     )
@@ -269,6 +285,8 @@ def _bootstrap_day(base_day: ReplayDay, rng: random.Random, block_steps: int, tr
     new_timestamps: list[int] = []
     snapshots_by_timestamp: dict[int, dict[str, Any]] = {}
     trades_by_timestamp_product: dict[tuple[int, str], list[Any]] = {}
+    plain_observations_by_timestamp: dict[int, dict[str, int | float]] = {}
+    conversion_observations_by_timestamp: dict[int, dict[str, dict[str, float]]] = {}
 
     while len(new_timestamps) < target_steps:
         remaining = target_steps - len(new_timestamps)
@@ -300,12 +318,22 @@ def _bootstrap_day(base_day: ReplayDay, rng: random.Random, block_steps: int, tr
                     trades_by_timestamp_product[(new_timestamp, product)] = [
                         _clone_trade(trade, new_timestamp, trade_class) for trade in trades
                     ]
+            plain_observations = base_day.plain_observations_by_timestamp.get(original_timestamp)
+            if plain_observations:
+                plain_observations_by_timestamp[new_timestamp] = dict(plain_observations)
+            conversion_observations = base_day.conversion_observations_by_timestamp.get(original_timestamp)
+            if conversion_observations:
+                conversion_observations_by_timestamp[new_timestamp] = {
+                    product: dict(values) for product, values in conversion_observations.items()
+                }
 
     return ReplayDay(
         day=base_day.day,
         ordered_timestamps=new_timestamps,
         snapshots_by_timestamp=snapshots_by_timestamp,
         trades_by_timestamp_product=trades_by_timestamp_product,
+        plain_observations_by_timestamp=plain_observations_by_timestamp,
+        conversion_observations_by_timestamp=conversion_observations_by_timestamp,
         step_interval=base_day.step_interval,
         source_timestamps=original_timestamps,
     )
@@ -404,13 +432,14 @@ def _run_replay_day(
     bot_path: Path,
     replay_day: ReplayDay,
     day_scenario: DayScenario,
-    datamodel: tuple[Any, Any, Any, Any, Any, Any],
+    datamodel: tuple[Any, Any, Any, Any, Any, Any, Any],
     listings: dict[str, Any],
     seed: int,
 ) -> DayResult:
     (
         _ListingClass,
         ObservationClass,
+        ConversionObservationClass,
         OrderClass,
         OrderDepthClass,
         TradeClass,
@@ -454,7 +483,12 @@ def _run_replay_day(
             product: ib.snapshot_to_order_depth(snapshots[product], OrderDepthClass) for product in products
         }
         market_trades = ib.build_market_trades(products, replay_day.trades_by_timestamp_product, timestamp)
-        observations = ObservationClass({}, {})
+        observations = ib.build_observations(
+            ObservationClass,
+            ConversionObservationClass,
+            replay_day.plain_observations_by_timestamp.get(timestamp, {}),
+            replay_day.conversion_observations_by_timestamp.get(timestamp, {}),
+        )
 
         state = TradingStateClass(
             traderData=trader_data,
@@ -774,11 +808,34 @@ def run_monte_carlo(
     output_root = Path(output_dir).expanduser().resolve() if output_dir else _default_output_dir(primary_bot, compare_bot)
     ensure_dir(output_root)
 
-    ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass = ib.ensure_imports(primary_bot)
-    datamodel = (ListingClass, ObservationClass, OrderClass, OrderDepthClass, TradeClass, TradingStateClass)
+    (
+        ListingClass,
+        ObservationClass,
+        ConversionObservationClass,
+        OrderClass,
+        OrderDepthClass,
+        TradeClass,
+        TradingStateClass,
+    ) = ib.ensure_imports(primary_bot)
+    datamodel = (
+        ListingClass,
+        ObservationClass,
+        ConversionObservationClass,
+        OrderClass,
+        OrderDepthClass,
+        TradeClass,
+        TradingStateClass,
+    )
     resolved_data_root = ib.resolve_data_dir(data_root)
     resolved_dataset_tag = ib.resolve_dataset_tag(resolved_data_root, dataset_tag)
-    prices_by_key, market_trades_by_day, listings, ordered_keys = ib.load_market(
+    (
+        prices_by_key,
+        market_trades_by_day,
+        plain_observations_by_key,
+        conversion_observations_by_key,
+        listings,
+        ordered_keys,
+    ) = ib.load_market(
         ListingClass,
         TradeClass,
         resolved_data_root,
@@ -787,7 +844,14 @@ def run_monte_carlo(
     )
     ordered_days = tuple(days)
     original_days = {
-        day: _build_original_day(day, prices_by_key, market_trades_by_day, ordered_keys)
+        day: _build_original_day(
+            day,
+            prices_by_key,
+            market_trades_by_day,
+            plain_observations_by_key,
+            conversion_observations_by_key,
+            ordered_keys,
+        )
         for day in ordered_days
     }
 

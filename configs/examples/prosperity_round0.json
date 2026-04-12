@@ -2,6 +2,9 @@
   "name": "Prosperity",
   "round_name": "round_0_example",
   "description": "Example configuration based on the EMERALDS / TOMATOES style round used in the current project history.",
+  "open_questions": [
+    "Which parts of passive execution behavior are trustworthy locally versus only on the official simulator?"
+  ],
   "mechanics": [
     {
       "name": "anchored",
@@ -23,6 +26,7 @@
       "execution_style": "mostly_passive",
       "mechanics": ["anchored", "static_anchor", "book_stable", "market_making", "inventory_sensitive"],
       "observations": ["returns to one stable fair", "spread capture matters"],
+      "open_questions": ["Confirm whether the round brief still implies one stable fair throughout the day."],
       "notes": "Start with anchored market making and keep the sleeve simple."
     },
     {
@@ -32,8 +36,18 @@
       "price_regime": "mixed",
       "execution_style": "mixed",
       "mechanics": ["microstructure_alpha", "trend", "mean_reversion", "latent_fair", "breakout", "inventory_sensitive", "unknown_execution"],
+      "unknown_mechanics": ["Official passive-fill behavior may transfer differently than the local simulator."],
+      "special_rules": ["Execution assumptions must be validated with probes before promotion."],
       "observations": ["range and trend both matter", "execution quality matters strongly"],
       "notes": "Start with predictive fair plus regime logic, then validate execution transfer separately."
+    }
+  ],
+  "special_rules": [
+    {
+      "name": "official_transfer_gap",
+      "scope": "round",
+      "description": "Local replay is useful but not authoritative for all execution assumptions.",
+      "open_questions": ["Which execution assumptions require probe validation before optimization conclusions are trusted?"]
     }
   ],
   "constraints": [
@@ -45,4 +59,3 @@
     "Use probes when a candidate appears dormant or mis-transfers officially."
   ]
 }
-

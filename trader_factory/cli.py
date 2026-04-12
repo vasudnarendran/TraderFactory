@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from trader_factory.core.specs import CompetitionSpec
+from trader_factory.core.validation import render_validation_markdown, validate_competition_spec
 from trader_factory.diagnostics import (
     run_aggressive_markout_report,
     run_boundary_probe_report,
@@ -11,6 +13,7 @@ from trader_factory.diagnostics import (
     run_passive_ladder_report,
 )
 from trader_factory.generation import render_markdown_plan, scaffold_trader_project
+from trader_factory.generation.spec_templates import available_spec_templates, render_spec_template
 from trader_factory.official import (
     run_imc_prosperity_submission,
     run_imc_prosperity_workflow,
@@ -21,9 +24,13 @@ from trader_factory.viewer import run_viewer_server
 from trader_factory.workflows import (
     baseline_policy_path,
     describe_imc_baseline_policy,
+    describe_imc_gate_policy,
+    gate_policy_path,
     load_imc_baseline_policy,
+    load_imc_gate_policy,
     run_imc_develop_cycle,
     set_imc_baseline_policy,
+    set_imc_gate_policy,
 )
 
 
@@ -34,6 +41,17 @@ def build_parser() -> argparse.ArgumentParser:
     plan = subparsers.add_parser("plan", help="Render a round plan from a competition spec.")
     plan.add_argument("spec", type=Path, help="Path to a JSON competition spec.")
     plan.add_argument("--output", type=Path, default=None, help="Optional markdown output path.")
+
+    validate = subparsers.add_parser("validate-spec", help="Validate a competition spec and surface missing structural inputs.")
+    validate.add_argument("spec", type=Path, help="Path to a JSON competition spec.")
+    validate.add_argument("--output", type=Path, default=None, help="Optional markdown output path.")
+    validate.add_argument("--json-output", type=Path, default=None, help="Optional JSON output path.")
+
+    spec_template = subparsers.add_parser("spec-template", help="Render a built-in round intake spec template.")
+    spec_template.add_argument("template", choices=[template.name for template in available_spec_templates()], help="Named intake template profile.")
+    spec_template.add_argument("--competition-name", default="NewCompetition", help="Competition name to place in the template.")
+    spec_template.add_argument("--round-name", default="round_1", help="Round name to place in the template.")
+    spec_template.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
 
     deterministic = subparsers.add_parser("deterministic", help="Run TraderFactory deterministic replay.")
     deterministic.add_argument("bot", type=Path, help="Path to the trader Python file.")
@@ -187,7 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
     develop_cycle.add_argument(
         "--deterministic-min-total-delta",
         type=float,
-        default=0.0,
+        default=None,
         help="Minimum candidate minus baseline deterministic total delta required to pass.",
     )
     develop_cycle.add_argument(
@@ -198,12 +216,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     develop_cycle.add_argument("--mc-samples-per-family", type=int, default=2, help="Monte Carlo samples per family.")
     develop_cycle.add_argument("--mc-seed", type=int, default=52, help="Monte Carlo random seed.")
-    develop_cycle.add_argument("--mc-min-mean-delta", type=float, default=0.0, help="Minimum overall Monte Carlo mean delta vs local baseline.")
+    develop_cycle.add_argument("--mc-min-mean-delta", type=float, default=None, help="Minimum overall Monte Carlo mean delta vs local baseline.")
     develop_cycle.add_argument("--mc-min-p10-delta", type=float, default=None, help="Optional minimum overall Monte Carlo p10 delta vs local baseline.")
     develop_cycle.add_argument(
         "--mc-min-plausible-mean-delta",
         type=float,
-        default=0.0,
+        default=None,
         help="Minimum plausible-profile Monte Carlo mean delta vs local baseline.",
     )
     develop_cycle.add_argument(
@@ -241,6 +259,22 @@ def build_parser() -> argparse.ArgumentParser:
     baseline_set.add_argument("--official-baseline-json", type=Path, default=None, help="Optional official baseline .json to pin.")
     baseline_set.add_argument("--notes", default="", help="Optional note for the baseline policy.")
 
+    gate_show = subparsers.add_parser("gate-imc-show", help="Show the persisted IMC gate policy for a round.")
+    gate_show.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+
+    gate_set = subparsers.add_parser("gate-imc-set", help="Persist the IMC gate policy for a round.")
+    gate_set.add_argument("--round-id", type=int, default=1, help="Prosperity round id, default 1.")
+    gate_set.add_argument("--require-deterministic", dest="require_deterministic", action="store_true", default=None, help="Require deterministic gating.")
+    gate_set.add_argument("--no-require-deterministic", dest="require_deterministic", action="store_false", help="Disable deterministic gating in the policy.")
+    gate_set.add_argument("--require-monte-carlo", dest="require_monte_carlo", action="store_true", default=None, help="Require Monte Carlo gating.")
+    gate_set.add_argument("--no-require-monte-carlo", dest="require_monte_carlo", action="store_false", help="Disable Monte Carlo gating in the policy.")
+    gate_set.add_argument("--deterministic-min-total-delta", type=float, default=None, help="Minimum deterministic total delta.")
+    gate_set.add_argument("--mc-min-mean-delta", type=float, default=None, help="Minimum Monte Carlo mean delta.")
+    gate_set.add_argument("--mc-min-p10-delta", type=float, default=None, help="Minimum Monte Carlo p10 delta.")
+    gate_set.add_argument("--mc-min-plausible-mean-delta", type=float, default=None, help="Minimum plausible-profile Monte Carlo mean delta.")
+    gate_set.add_argument("--mc-min-plausible-p10-delta", type=float, default=None, help="Minimum plausible-profile Monte Carlo p10 delta.")
+    gate_set.add_argument("--notes", default="", help="Optional note for the gate policy.")
+
     return parser
 
 
@@ -258,6 +292,34 @@ def main() -> None:
             print(f"Wrote plan to {args.output}")
         return
 
+    if args.command == "validate-spec":
+        spec = CompetitionSpec.from_json(args.spec)
+        report = validate_competition_spec(spec)
+        rendered = render_validation_markdown(report)
+        if args.output is None:
+            print(rendered)
+        else:
+            args.output.write_text(rendered + "\n")
+            print(f"Wrote validation report to {args.output}")
+        if args.json_output is not None:
+            args.json_output.write_text(json.dumps(report.to_dict(), indent=2) + "\n")
+            print(f"Wrote validation JSON to {args.json_output}")
+        return
+
+    if args.command == "spec-template":
+        payload = render_spec_template(
+            args.template,
+            competition_name=args.competition_name,
+            round_name=args.round_name,
+        )
+        rendered = json.dumps(payload, indent=2) + "\n"
+        if args.output is None:
+            print(rendered, end="")
+        else:
+            args.output.write_text(rendered)
+            print(f"Wrote spec template to {args.output}")
+        return
+
     if args.command == "deterministic":
         from trader_factory.simulation import run_deterministic
 
@@ -271,6 +333,29 @@ def main() -> None:
         print(f"Output dir: {result.output_dir}")
         print(f"Summary: {result.summary_path}")
         print(f"Final total PnL: {result.final_total_pnl}")
+        return
+
+    if args.command == "gate-imc-show":
+        policy = load_imc_gate_policy(args.round_id)
+        print(describe_imc_gate_policy(policy))
+        if policy is not None:
+            print(f"\nPolicy path: {gate_policy_path(args.round_id)}")
+        return
+
+    if args.command == "gate-imc-set":
+        policy, path = set_imc_gate_policy(
+            round_id=args.round_id,
+            require_deterministic=args.require_deterministic,
+            require_monte_carlo=args.require_monte_carlo,
+            deterministic_min_total_delta=args.deterministic_min_total_delta,
+            mc_min_mean_delta=args.mc_min_mean_delta,
+            mc_min_p10_delta=args.mc_min_p10_delta,
+            mc_min_plausible_mean_delta=args.mc_min_plausible_mean_delta,
+            mc_min_plausible_p10_delta=args.mc_min_plausible_p10_delta,
+            notes=args.notes,
+        )
+        print(describe_imc_gate_policy(policy))
+        print(f"\nSaved to: {path}")
         return
 
     if args.command == "monte-carlo":

@@ -1,0 +1,71 @@
+{
+  "name": "Prosperity",
+  "round_name": "future_conversion_auction_example",
+  "description": "Example intake spec for a future round with conversion economics and auction windows.",
+  "mechanics": [
+    {
+      "name": "conversion",
+      "description": "Product can be transformed or compared against another state with explicit economics.",
+      "tags": ["transport"]
+    },
+    {
+      "name": "auction",
+      "description": "Product has scheduled auction windows with dedicated clearing behavior.",
+      "tags": []
+    }
+  ],
+  "products": [
+    {
+      "symbol": "LOCAL_ORCHID",
+      "position_limit": 50,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["conversion", "transport"],
+      "conversion_rule": {
+        "ratio": 1.0,
+        "fee": 1.5,
+        "delay_steps": 2,
+        "lot_size": 5,
+        "target_product": "REMOTE_ORCHID"
+      },
+      "notes": "Example locally traded product with explicit conversion economics."
+    },
+    {
+      "symbol": "REMOTE_ORCHID",
+      "position_limit": 50,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": ["market_making"],
+      "notes": "Example reference or alternate venue product."
+    },
+    {
+      "symbol": "AUCTION_ORCHID",
+      "position_limit": 40,
+      "tick_size": 1.0,
+      "price_regime": "auction",
+      "execution_style": "mixed",
+      "mechanics": ["auction"],
+      "auction_rule": {
+        "schedule": "open_and_close",
+        "clearing_rule": "uniform_price",
+        "prep_window": 10,
+        "submission_window": 5,
+        "visibility": ["imbalance", "indicative_price"]
+      },
+      "notes": "Example auction-style product."
+    }
+  ],
+  "relationships": [],
+  "special_rules": [],
+  "constraints": [
+    "Confirm whether conversion actions are available directly or only through observation pricing."
+  ],
+  "open_questions": [],
+  "unknown_mechanics": [],
+  "research_goals": [
+    "Separate conversion-observation logic from conversion-action semantics.",
+    "Confirm whether the auction requires a dedicated execution sleeve."
+  ]
+}

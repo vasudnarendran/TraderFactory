@@ -13,6 +13,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = [
+  "pytest",
+]
 legacy-monte-carlo = [
   "IPython",
   "jsonpickle",
