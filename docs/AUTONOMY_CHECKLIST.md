@@ -68,6 +68,13 @@ Status: `Partial`
 
 What exists:
 - competition, product, and mechanic specs
+- built-in round-intake template profiles for common mechanic families
+- bundled future-mechanic example specs
+- structured `observation_channels` for machine-readable external or keyed inputs
+- structured `derivative_contract`, `conversion_rule`, and `auction_rule` support for common structural mechanics
+- structured `basket_definition`, `participant_rule`, and `signal_rule` support for linked baskets, participant semantics, and explicit signal-source selection
+- spec-level validation and missing-field reporting for typed mechanics, legacy-field reliance, and unresolved uncertainty
+- explicit `unknown_mechanics`, `open_questions`, `special_rules`, `relationships`, and `custom_fields` escape hatches
 
 What is missing:
 - richer schemas for future rounds
@@ -120,9 +127,10 @@ Status: `Partial`
 What exists:
 - strategy taxonomy
 - capability registry
+- reusable runnable helpers for anchored, spread, basket-pricing, derivative-pricing, conversion-reference, and participant-flow sleeves
 
 What is missing:
-- more executable strategy sleeves rather than documentation-only families
+- more executable strategy sleeves for derivatives, baskets, auctions, storage, and richer external-signal families beyond the simple explicit-source baseline
 
 Why it matters:
 - a taxonomy alone does not generate a trader
@@ -140,7 +148,9 @@ Status: `Partial`
 What exists:
 - baseline scaffolding
 - capability-aware project generator
-- starter sleeves
+- generated `spec_validation.md` and `spec_validation.json` artifacts per project
+- starter sleeves for anchored, simple market-making, directional, simple linked spread, explicit weighted basket, vanilla derivative, simple conversion, explicit participant-flow, and explicit external-signal products
+- blueprint-driven structural stubs for linked, derivative, participant, conversion, auction, storage, and external-signal products
 
 What is missing:
 - stronger generated sleeves
@@ -158,11 +168,14 @@ Extra information needed:
 - desired defaults for trader structure in future rounds
 
 ### 6. Mechanic-to-Model Mapping
-Status: `Missing`
+Status: `Partial`
 
 What exists:
-- manual reasoning
+- a mechanic interpretation layer with explicit fallback modes
+- product-level intake gaps and research-trigger generation
 - partial registry guidance
+- explicit runnable mapping for anchored, simple market-making, directional, simple linked spread, explicit weighted basket, vanilla derivative, simple conversion-observation, explicit participant-flow, and explicit external-signal products
+- blueprint-driven archetypes for structurally novel product families
 
 What is missing:
 - formal decision rules such as:
@@ -170,6 +183,7 @@ What is missing:
   - directional microstructure asset -> directional + inventory-aware execution sleeve
   - option -> pricing + vol/risk sleeve
   - basket -> residual spread sleeve
+  - auction -> auction-aware sleeve
 
 Why it matters:
 - this is the core missing intelligence layer between “spec” and “generated model”

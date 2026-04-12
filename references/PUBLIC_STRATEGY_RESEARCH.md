@@ -505,6 +505,20 @@ That means our future basket or conversion modules should be built around:
 
 not just a textbook residual.
 
+### Advanced derivative note: Relativistic Black-Scholes is research, not baseline
+
+There are mathematically interesting extensions of Black-Scholes such as Relativistic Black-Scholes.
+
+Practical classification for TraderFactory:
+- keep these as `reference_only`
+- do not promote them into a default derivative sleeve before we even know whether the round has liquid option products
+- prefer standard Black-Scholes or a simple implied-volatility-adjusted baseline first
+
+Why:
+- the main bottleneck in competition rounds is usually contract semantics, calibration quality, execution, and transfer
+- not replacing a simple pricing PDE with a more exotic one
+- advanced variants only become worth the complexity if a real options round shows a persistent surface-shape failure that simpler models cannot handle cleanly
+
 ### ML is most useful as a sidecar
 
 The Optiver-style material is still valuable, but the main lesson is not "replace the bot with a model."

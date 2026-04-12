@@ -31,6 +31,22 @@ Replay data resolution order:
 2. the legacy sibling path `../Prosperity/Data/`
 3. an explicit `--data-root` override always wins
 
+Optional observation support:
+
+- deterministic replay and Monte Carlo now consume both plain observations and conversion observations when available
+- the engines accept either:
+  - inline observation columns in `prices_<dataset_tag>_day_<day>.csv`
+  - or a sidecar file named `observations_<dataset_tag>_day_<day>.csv`
+  - `plain_observations_<dataset_tag>_day_<day>.csv` is also accepted for compatibility
+  - `conversion_observations_<dataset_tag>_day_<day>.csv` is also accepted for compatibility
+- canonical plain-observation sidecar schema:
+  - `day,timestamp,product,value`
+  - or `day,timestamp,observation_key,value` when the observation key differs from the traded product symbol
+- canonical conversion-observation sidecar schema:
+  - `day,timestamp,product,bid_price,ask_price,transport_fees,export_tariff,import_tariff,sunlight,humidity`
+- this matters because runnable `signal_mm` sleeves need non-empty `state.observations.plainValueObservations`
+- and runnable `conversion_mm` sleeves need non-empty `state.observations.conversionObservations`
+
 The legacy sibling path is only a fallback for convenience. The intended standalone home for replay data is [data/README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/data/README.md).
 
 So the current local engine stack covers:
@@ -239,6 +255,8 @@ Engine entry points:
 Current CLI:
 
 ```bash
+python3 -m trader_factory.cli spec-template generic --output /tmp/new_round_spec.json
+python3 -m trader_factory.cli validate-spec /tmp/new_round_spec.json
 python3 -m trader_factory.cli scaffold-project configs/examples/prosperity_round0.json
 ```
 

@@ -34,6 +34,12 @@ This repo is intended to stand on its own once you provide:
 - replay CSVs
 - official `.log` / `.json` artifacts when doing postmortems
 
+In practice, the target operating model is agent-assisted:
+
+- TraderFactory should absorb the repetitive mechanical work
+- the agent should spend tokens on justified reasoning, ambiguity resolution, and design decisions
+- unknown mechanics should stay explicit instead of being guessed away
+
 So the README is split into two parts:
 
 1. what already exists in this scaffold right now
@@ -45,6 +51,8 @@ The following pieces are already present in this repo scaffold:
 
 - a core spec schema in [trader_factory/core/specs.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/specs.py)
 - a strategy capability registry in [trader_factory/core/registry.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/registry.py)
+- a mechanic interpretation and fallback layer in [trader_factory/core/mapping.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/mapping.py)
+- a structured spec-validation layer in [trader_factory/core/validation.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/core/validation.py)
 - a structured strategy-family taxonomy in [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
 - a baseline planning layer in [trader_factory/generation/bootstrap.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/bootstrap.py)
 - a minimal CLI in [trader_factory/cli.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/cli.py)
@@ -56,8 +64,16 @@ The following pieces are already present in this repo scaffold:
 - a queue-aware official submission workflow in [trader_factory/official/workflow.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/official/workflow.py)
 - a development-mode decision pipeline in [trader_factory/workflows/imc_develop.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/imc_develop.py)
 - a persisted baseline-policy layer in [trader_factory/workflows/baselines.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/baselines.py)
+- a persisted gate-policy layer in [trader_factory/workflows/gates.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/workflows/gates.py)
 - a reusable execution-probe framework in [trader_factory/probes](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/probes)
 - a capability-aware project generator in [trader_factory/generation/project.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/generation/project.py)
+- structural-product archetype blueprints in [trader_factory/strategies/blueprints.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/blueprints.py)
+- a reusable basket-pricing helper in [trader_factory/strategies/basket.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/basket.py)
+- a reusable linked-product spread helper in [trader_factory/strategies/spread.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/spread.py)
+- a reusable conversion-reference helper in [trader_factory/strategies/conversion.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/conversion.py)
+- a reusable derivative-pricing helper in [trader_factory/strategies/derivative.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/derivative.py)
+- a reusable participant-flow helper in [trader_factory/strategies/participant.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/participant.py)
+- a reusable external-signal normalization helper in [trader_factory/strategies/signal.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/strategies/signal.py)
 - working deterministic replay and diagnostics engines in:
   - [trader_factory/simulation/deterministic.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/deterministic.py)
   - [trader_factory/simulation/internal_backtest.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/simulation/internal_backtest.py)
@@ -68,6 +84,7 @@ The following pieces are already present in this repo scaffold:
   - [trader_factory/diagnostics/passive_ladder.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/diagnostics/passive_ladder.py)
   - [trader_factory/diagnostics/aggressive_markout.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/trader_factory/diagnostics/aggressive_markout.py)
 - example competition config in [configs/examples/prosperity_round0.json](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/configs/examples/prosperity_round0.json)
+- additional future-mechanic spec examples in [configs/README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/configs/README.md)
 - a trader template in [templates/python_trader/Trader.py](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/templates/python_trader/Trader.py)
 - migration and workflow docs in [docs](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs)
 
@@ -85,17 +102,19 @@ If you are a new teammate or a new coding agent, read these in order:
 2. [docs/WORKFLOW.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/WORKFLOW.md)
 3. [docs/TRADER_FACTORY_ARCHITECTURE_FULL.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE_FULL.md)
 4. [docs/AUTONOMY_CHECKLIST.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/AUTONOMY_CHECKLIST.md)
-5. [references/SOURCE_MAP.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/SOURCE_MAP.md)
-6. [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
-7. [references/Strategies.txt](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/Strategies.txt)
-8. [references/PUBLIC_STRATEGY_RESEARCH.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/PUBLIC_STRATEGY_RESEARCH.md)
-9. [references/execution_probes/DISCOVERIES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/execution_probes/DISCOVERIES.md)
-10. [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
-11. [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
-12. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
-13. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
-14. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
-15. [docs/OFFICIAL_AUTOMATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OFFICIAL_AUTOMATION.md)
+5. [docs/ROUND_START_CHECKLIST.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ROUND_START_CHECKLIST.md)
+6. [docs/SPEC_INTAKE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/SPEC_INTAKE.md)
+7. [references/SOURCE_MAP.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/SOURCE_MAP.md)
+8. [docs/STRATEGY_TAXONOMY.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/STRATEGY_TAXONOMY.md)
+9. [references/Strategies.txt](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/Strategies.txt)
+10. [references/PUBLIC_STRATEGY_RESEARCH.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/PUBLIC_STRATEGY_RESEARCH.md)
+11. [references/execution_probes/DISCOVERIES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/references/execution_probes/DISCOVERIES.md)
+12. [docs/ENGINES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/ENGINES.md)
+13. [docs/OPTIMIZATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OPTIMIZATION.md)
+14. [docs/MONTE_CARLO.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MONTE_CARLO.md)
+15. [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
+16. [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
+17. [docs/OFFICIAL_AUTOMATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/OFFICIAL_AUTOMATION.md)
 
 If you only read one technical reference after this README, read the full architecture doc.
 
@@ -118,10 +137,48 @@ python3 -m pip install -e .
 
 Input expectations by command:
 
-- `plan` and `scaffold-project`: competition spec JSON
+- `plan`, `validate-spec`, and `scaffold-project`: competition spec JSON
 - `deterministic` and `monte-carlo`: trader Python file plus replay CSVs
 - diagnostics: official `.log`, sometimes `.json`
 - `probe-scaffold`: baseline trader Python file
+
+Spec convention for external data:
+
+- use `observation_channels` when a product depends on a machine-readable feed or keyed observation
+- keep `observations` as qualitative notes or backward-compatible free-text hints
+- for external-signal products, prefer an explicit plain channel such as:
+
+```json
+{
+  "observation_channels": [
+    {
+      "key": "WEATHER_SIGNAL",
+      "kind": "plain",
+      "role": "signal",
+      "description": "External weather feed"
+    }
+  ]
+}
+```
+
+- if a legacy config still places structured dicts inside `observations`, TraderFactory will still parse them, but `observation_channels` is the intended clean schema
+
+Spec convention for structural mechanics:
+
+- use `derivative_contract` for option and payoff inputs such as `underlying`, `strike`, `option_kind`, `time_to_expiry_years`, and `volatility`
+- use `conversion_rule` for explicit conversion semantics such as `ratio`, `fee`, `delay_steps`, and `lot_size`
+- use `auction_rule` for auction scheduling and clearing semantics such as `schedule`, `clearing_rule`, and `prep_window`
+- use `basket_definition` for explicit linked-product basket components, divisor, and fair offset
+- use `participant_rule` for tracked participants, follow/fade intent, and participant weights
+- use `signal_rule` when a product depends on one primary external signal key or signal-latency convention
+- keep `custom_fields` as an escape hatch, not the preferred home for standard mechanic inputs
+
+Recommended intake flow:
+
+1. write or update the competition spec JSON
+2. run `python3 -m trader_factory.cli validate-spec <spec.json>`
+3. fix blocked or high-value validation findings
+4. scaffold the project only after the spec is structurally coherent
 
 ## Repo Philosophy
 
@@ -174,6 +231,7 @@ Holds the universal vocabulary:
 - product specs
 - mechanic labels
 - strategy registry
+- mechanic-to-sleeve interpretation and fallback rules
 
 This layer is what lets an agent reason from product mechanics instead of hand-written bot lore.
 
@@ -184,6 +242,7 @@ Holds the logic that turns a round spec into a baseline build plan.
 Right now it produces:
 
 - readable round plans
+- spec validation reports
 - probe workspaces
 - baseline trader projects
 
@@ -268,13 +327,33 @@ That is the exact process this repo is meant to standardize.
 
 ## Getting Started Right Now
 
-### 1. Inspect the example round spec
+### 1. Start from a template or example round spec
 
 See:
 
 - [configs/examples/prosperity_round0.json](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/configs/examples/prosperity_round0.json)
+- [configs/README.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/configs/README.md)
+- [docs/SPEC_INTAKE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/SPEC_INTAKE.md)
 
-It describes a simple EMERALDS / TOMATOES style round using structured fields:
+Two practical starting paths now exist:
+
+- copy one of the example specs from `configs/examples/`
+- or render a built-in intake template:
+
+```bash
+python3 -m trader_factory.cli spec-template generic --output /tmp/new_round_spec.json
+python3 -m trader_factory.cli spec-template derivative --output /tmp/new_round_spec.json
+```
+
+The bundled examples describe:
+
+- a simple EMERALDS / TOMATOES style round
+- a derivative round
+- a linked-products round
+- a signal and participant round
+- a conversion and auction round
+
+They use structured fields such as:
 
 - product
 - position limit
@@ -285,12 +364,22 @@ It describes a simple EMERALDS / TOMATOES style round using structured fields:
 
 That file is only the bundled example. The framework itself is intended to stay product-agnostic and mechanic-driven.
 
-### 2. Run the planning CLI
+### 2. Validate the spec first
 
 From the `TraderFactory` folder:
 
 ```bash
-python3 -m trader_factory.cli plan configs/examples/prosperity_round0.json
+python3 -m trader_factory.cli validate-spec /tmp/new_round_spec.json
+```
+
+This catches missing structural inputs before project generation.
+
+### 3. Run the planning CLI
+
+From the `TraderFactory` folder:
+
+```bash
+python3 -m trader_factory.cli plan /tmp/new_round_spec.json
 ```
 
 What it does today:
@@ -301,7 +390,7 @@ What it does today:
 
 This is the minimal working seed of the future generator pipeline.
 
-### 3. Run the current engine layer
+### 4. Run the current engine layer
 
 Deterministic replay:
 
@@ -367,11 +456,12 @@ Important note:
 - the probe framework is local to TraderFactory and documented in [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
 - the baseline project generator is documented in [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
-### 4. Read the workflow docs
+### 5. Read the workflow docs
 
 Start with:
 
 - [docs/WORKFLOW.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/WORKFLOW.md)
+- [docs/SPEC_INTAKE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/SPEC_INTAKE.md)
 - [docs/MVP_SCOPE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MVP_SCOPE.md)
 - [docs/MIGRATION_PLAN.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/MIGRATION_PLAN.md)
 - [docs/TRADER_FACTORY_ARCHITECTURE.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/TRADER_FACTORY_ARCHITECTURE.md)
@@ -381,7 +471,7 @@ Start with:
 - [docs/PROBES.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/PROBES.md)
 - [docs/GENERATION.md](/Users/vasudravinarendran/Documents/Prosperity/TraderFactory/docs/GENERATION.md)
 
-### 5. Review the source references
+### 6. Review the source references
 
 The initial scaffold is based on the current project’s real assets.
 See:
@@ -395,12 +485,14 @@ See:
 ### If you are starting a new competition round
 
 1. copy an example config from `configs/examples/`
-2. define the new products and mechanics
-3. run the planner CLI
-4. write or generate the first baseline trader project
-5. connect it to deterministic replay
-6. connect it to Monte Carlo
-7. compare baselines before doing any deep optimization
+2. or render a template with `spec-template`
+3. define the new products and mechanics
+4. run `validate-spec`
+5. run the planner CLI
+6. write or generate the first baseline trader project
+7. connect it to deterministic replay
+8. connect it to Monte Carlo
+9. compare baselines before doing any deep optimization
 
 This is the main operating idea of `TraderFactory`:
 

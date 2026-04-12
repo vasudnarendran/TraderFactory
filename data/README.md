@@ -7,6 +7,19 @@ To run deterministic replay or Monte Carlo locally, place replay CSVs in this di
 - `prices_<dataset_tag>_day_<day>.csv`
 - `trades_<dataset_tag>_day_<day>.csv`
 
+Optional observation inputs:
+
+- preferred sidecar name: `observations_<dataset_tag>_day_<day>.csv`
+- compatibility alias for plain observations: `plain_observations_<dataset_tag>_day_<day>.csv`
+- compatibility alias: `conversion_observations_<dataset_tag>_day_<day>.csv`
+- canonical plain-observation sidecar columns:
+  - `day,timestamp,product,value`
+  - or `day,timestamp,observation_key,value` when the observation key is not the traded product symbol
+- canonical conversion-observation sidecar columns:
+  - `day,timestamp,product,bid_price,ask_price,transport_fees,export_tariff,import_tariff,sunlight,humidity`
+- the replay engines also accept inline observation columns on the `prices_*.csv` rows when the dataset already embeds them
+- plain observations can be embedded inline with fields such as `observation_value`, `plain_observation_value`, or `signal_value`
+
 Examples:
 
 - `prices_round_0_day_-2.csv`

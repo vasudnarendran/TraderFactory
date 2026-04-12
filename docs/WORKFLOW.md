@@ -12,12 +12,14 @@ Use development mode when:
 
 Typical work:
 
+- validate the round spec
 - scaffold a baseline bot
 - add or refine a strategy sleeve
 - run deterministic replay
 - run Monte Carlo robustness
 - run focused optimization
 - compare against the baseline
+- apply an explicit promotion policy rather than relying on ad hoc judgment
 - use `develop-cycle-imc` when you want TraderFactory to apply a standard local gate before consuming an official submission slot
 
 ## Research Mode
@@ -54,6 +56,17 @@ This prevents endless half-research, half-development branches.
 Development mode:
 
 ```bash
+python3 -m trader_factory.cli spec-template generic --output /tmp/new_round_spec.json
+
+python3 -m trader_factory.cli validate-spec /path/to/spec.json
+
+python3 -m trader_factory.cli scaffold-project /path/to/spec.json
+
+python3 -m trader_factory.cli gate-imc-set \
+  --round-id 1 \
+  --deterministic-min-total-delta 0.0 \
+  --mc-min-mean-delta 0.0
+
 python3 -m trader_factory.cli baseline-imc-set \
   --round-id 1 \
   --compare-bot /path/to/Baseline.py
@@ -66,11 +79,13 @@ This runs:
 
 1. local deterministic checks
 2. local Monte Carlo checks
-3. official submission only if the local gates pass, unless `--force-submit` is set
+3. policy evaluation across the local metrics
+4. official submission only if the gate policy passes, unless `--force-submit` is set
 4. a final summary with both local and official verdicts
 
 The baseline command is optional, but useful. Once set, `develop-cycle-imc` can reuse the stored local baseline bot and optional official baseline artifacts automatically.
 The policy JSON lives under `configs/baselines/` and is treated as local machine state rather than committed project config.
+The gate policy JSON lives under `configs/gates/` and defines the reusable promotion thresholds for the round.
 
 For a safe local-only validation pass:
 
