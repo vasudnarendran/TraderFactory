@@ -26,6 +26,30 @@ def test_render_round_brief_template_produces_structured_products() -> None:
     assert "derivative_contract" in brief["products"][1]
 
 
+def test_render_round_brief_template_includes_round_and_product_checklists() -> None:
+    brief = render_round_brief_template(
+        "derivative",
+        competition_name="DemoComp",
+        round_name="round_demo",
+    )
+
+    round_checklist = brief["round_opening_checklist"]
+    derivative_product = brief["products"][1]
+    product_checklist = derivative_product["product_opening_checklist"]
+
+    assert round_checklist["profile"] == "derivative"
+    assert round_checklist["status_legend"] == ["todo", "in_progress", "done", "blocked", "n/a"]
+    assert any(item["id"] == "confirm_products_limits_ticks" for item in round_checklist["required_now"])
+    assert any(item["id"] == "confirm_derivative_settlement" for item in round_checklist["required_now"])
+    assert product_checklist["objective"].startswith("Capture the minimum defensible structure")
+    assert any(item["id"] == "derivative_contract" for item in product_checklist["required_now"])
+    assert any(
+        "derivative_contract.underlying" in item["target_fields"]
+        for item in product_checklist["required_now"]
+        if item["id"] == "derivative_contract"
+    )
+
+
 def test_extract_spec_from_brief_round_trips_into_valid_competition_spec() -> None:
     brief = render_round_brief_template(
         "signal_participant",
@@ -143,4 +167,7 @@ def test_create_intake_workspace_writes_expected_files(tmp_path: Path) -> None:
     assert spec.products[-1].basket_definition is not None
     assert report.counts_by_severity()["error"] == 0
     assert "brief-to-spec" in result.readme_path.read_text()
+    assert "round_opening_checklist" in result.readme_path.read_text()
     assert "Brief Extraction Report" in result.extraction_report_path.read_text()
+    assert "round_opening_checklist" in brief_payload
+    assert "product_opening_checklist" in brief_payload["products"][0]

@@ -124,8 +124,12 @@ def test_scaffold_trader_project_generates_runnable_conversion_sleeve(tmp_path: 
     assert 'conversion_rule = self.metadata.get("conversion_rule") or {}' in trader_text
     assert "def build_conversions(self, state: TradingState) -> int:" in trader_text
     assert '"generated_archetype": "conversion_mm"' in params_text
-    assert '"conversion_rule": {"custom_fields": {}, "delay_steps": 3, "fee": 1.5, "lot_size": 5, "price_observation_key": "", "ratio": 2.0, "source_product": "", "target_product": ""}' in params_text
+    assert '"conversion_rule": {' in params_text
+    assert '"ratio": 2.0' in params_text
+    assert '"delay_steps": 3' in params_text
+    assert '"lot_size": 5' in params_text
     assert "Adjust thresholds after the first trustworthy baseline run." in gate_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_generates_runnable_derivative_sleeve(tmp_path: Path) -> None:
@@ -166,7 +170,11 @@ def test_scaffold_trader_project_generates_runnable_derivative_sleeve(tmp_path: 
     assert "def derivative_reference(self, state: TradingState):" in trader_text
     assert 'derivative_contract = self.metadata.get("derivative_contract") or {}' in trader_text
     assert '"generated_archetype": "derivative_mm"' in params_text
-    assert '"derivative_contract": {"carry_rate": null, "contract_size": null, "custom_fields": {}, "expiry_style": "", "option_kind": "call", "risk_free_rate": null, "settlement_formula": "", "strike": 100.0, "time_to_expiry_years": 0.25, "underlying": "SPOT", "volatility": 0.2}' in params_text
+    assert '"derivative_contract": {' in params_text
+    assert '"option_kind": "call"' in params_text
+    assert '"underlying": "SPOT"' in params_text
+    assert '"risk_free_rate": None' in params_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_generates_runnable_basket_sleeve(tmp_path: Path) -> None:
@@ -208,7 +216,11 @@ def test_scaffold_trader_project_generates_runnable_basket_sleeve(tmp_path: Path
     assert "def basket_reference(self, state: TradingState, own_mid: float) -> float | None:" in trader_text
     assert 'basket_definition = self.metadata.get("basket_definition") or {}' in trader_text
     assert '"generated_archetype": "basket_mm"' in params_text
-    assert '"basket_definition": {"components": [{"offset": 0.0, "symbol": "A", "weight": 2.0}, {"offset": 0.0, "symbol": "B", "weight": -1.0}], "custom_fields": {}, "divisor": 1.0, "fair_offset": 3.0}' in params_text
+    assert '"basket_definition": {' in params_text
+    assert '"symbol": "A"' in params_text
+    assert '"symbol": "B"' in params_text
+    assert '"fair_offset": 3.0' in params_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_generates_runnable_spread_sleeve(tmp_path: Path) -> None:
@@ -249,7 +261,11 @@ def test_scaffold_trader_project_generates_runnable_spread_sleeve(tmp_path: Path
     assert "class DeltaTrader" in trader_text
     assert "def reference_fair(self, state: TradingState, own_mid: float) -> float | None:" in trader_text
     assert '"generated_archetype": "spread_mm"' in params_text
-    assert '"relationship_details": [{"counterpart": "SIGMA", "description": "", "hedge_ratio": 1.5, "relationship": "spread", "tags": []}]' in params_text
+    assert '"relationship_details": [{' in params_text
+    assert '"counterpart": "SIGMA"' in params_text
+    assert '"hedge_ratio": 1.5' in params_text
+    assert '"relationship": "spread"' in params_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_generates_runnable_participant_sleeve(tmp_path: Path) -> None:
@@ -287,7 +303,11 @@ def test_scaffold_trader_project_generates_runnable_participant_sleeve(tmp_path:
     assert "class EpsilonTrader" in trader_text
     assert "def participant_signal(self, state: TradingState):" in trader_text
     assert '"generated_archetype": "participant_mm"' in params_text
-    assert '"participant_rule": {"custom_fields": {}, "follow_mode": "fade", "participant_weights": {"Olivia": 2.0}, "signal_horizon": null, "tracked_participants": ["Olivia", "Mia"]}' in params_text
+    assert '"participant_rule": {' in params_text
+    assert '"follow_mode": "fade"' in params_text
+    assert '"tracked_participants": ["Olivia", "Mia"]' in params_text
+    assert '"signal_horizon": None' in params_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_generates_runnable_signal_sleeve(tmp_path: Path) -> None:
@@ -334,8 +354,13 @@ def test_scaffold_trader_project_generates_runnable_signal_sleeve(tmp_path: Path
     assert "def signal_reference(self, state: TradingState, best_bid: int, best_ask: int):" in trader_text
     assert 'signal_rule = self.metadata.get("signal_rule") or {}' in trader_text
     assert '"generated_archetype": "signal_mm"' in params_text
-    assert '"observation_channels": [{"custom_fields": {}, "description": "External weather feed", "fields": [], "key": "WEATHER_SIGNAL", "kind": "plain", "latency_hint": "", "open_questions": [], "role": "signal", "source_product": "", "tags": [], "units": ""}]' in params_text
-    assert '"signal_rule": {"custom_fields": {}, "interpretation_mode": "", "latency_hint": "one_step", "source_key": "WEATHER_SIGNAL", "staleness_limit": null}' in params_text
+    assert '"observation_channels": [{' in params_text
+    assert '"key": "WEATHER_SIGNAL"' in params_text
+    assert '"role": "signal"' in params_text
+    assert '"signal_rule": {' in params_text
+    assert '"latency_hint": "one_step"' in params_text
+    assert '"staleness_limit": None' in params_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_preserves_structured_auction_rule_metadata(tmp_path: Path) -> None:
@@ -371,8 +396,13 @@ def test_scaffold_trader_project_preserves_structured_auction_rule_metadata(tmp_
     trader_text = result.trader_path.read_text()
 
     assert '"generated_archetype": "auction_stub"' in params_text
-    assert '"auction_rule": {"clearing_rule": "uniform_price", "custom_fields": {}, "prep_window": 10, "schedule": "open_and_close", "submission_window": null, "visibility": ["imbalance", "indicative_price"]}' in params_text
+    assert '"auction_rule": {' in params_text
+    assert '"clearing_rule": "uniform_price"' in params_text
+    assert '"prep_window": 10' in params_text
+    assert '"submission_window": None' in params_text
+    assert '"visibility": ["imbalance", "indicative_price"]' in params_text
     assert "class AucTrader" in trader_text
+    ast.parse(params_text)
 
 
 def test_scaffold_trader_project_writes_validation_findings_for_incomplete_specs(tmp_path: Path) -> None:

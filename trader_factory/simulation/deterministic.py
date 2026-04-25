@@ -47,6 +47,7 @@ def run_deterministic(
     output_dir: str | Path | None = None,
     data_root: str | Path | None = None,
     dataset_tag: str | None = None,
+    volume_multiplier: float = 1.0,
     python_bin: str = sys.executable,
     timeout_seconds: float | None = None,
     check: bool = True,
@@ -68,6 +69,8 @@ def run_deterministic(
         command.extend(["--data-root", str(Path(data_root).expanduser().resolve())])
     if dataset_tag is not None:
         command.extend(["--dataset-tag", dataset_tag])
+    if volume_multiplier != 1.0:
+        command.extend(["--volume-multiplier", str(volume_multiplier)])
     process = subprocess.run(
         command,
         cwd=trader_factory_root(),

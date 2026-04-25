@@ -1,0 +1,35 @@
+{
+  "bot_path": "generated/optimization/round1_v13_run1/bots/trader_v13_best.py",
+  "run_name": "maf_v13_run1",
+  "days": [-2, -1, 0],
+  "dataset_tag": "round_1",
+  "volume_multiplier": 1.25,
+  "local_to_official_ratio": 7.0,
+  "bid_max": 1000.0,
+  "n_bid_points": 500,
+  "n_sim": 50000,
+  "seed": 42,
+  "field_models": [
+    {
+      "name": "conservative",
+      "n_teams": 500,
+      "zero_fraction": 0.50,
+      "bid_lognormal_mean": 3.0,
+      "bid_lognormal_std": 1.0
+    },
+    {
+      "name": "moderate",
+      "n_teams": 500,
+      "zero_fraction": 0.30,
+      "bid_lognormal_mean": 4.0,
+      "bid_lognormal_std": 1.0
+    },
+    {
+      "name": "aggressive",
+      "n_teams": 500,
+      "zero_fraction": 0.20,
+      "bid_lognormal_mean": 4.5,
+      "bid_lognormal_std": 1.0
+    }
+  ]
+}

@@ -13,6 +13,7 @@ Use development mode when:
 Typical work:
 
 - capture the raw brief in an intake workspace when the round first opens
+- work through `round_opening_checklist` and each product's `product_opening_checklist`
 - convert `round_brief.json` into `spec.json`
 - inspect `brief_extraction.md` so inferred fields stay auditable
 - validate the round spec

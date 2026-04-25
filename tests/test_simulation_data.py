@@ -4,6 +4,7 @@ import random
 import pytest
 
 from trader_factory.core import datamodel
+from trader_factory.simulation.deterministic import run_deterministic
 from trader_factory.simulation.internal_backtest import resolve_dataset_tag
 from trader_factory.simulation.internal_backtest import build_observations, load_market
 from trader_factory.simulation.monte_carlo import _bootstrap_day, _build_original_day
@@ -440,3 +441,82 @@ def test_bootstrap_day_preserves_plain_observations(tmp_path: Path) -> None:
     assert set(bootstrapped.plain_observations_by_timestamp) == set(bootstrapped.ordered_timestamps)
     for timestamp in bootstrapped.ordered_timestamps:
         assert "WEATHERED" in bootstrapped.plain_observations_by_timestamp[timestamp]
+
+
+def test_run_deterministic_records_passive_resting_fills_in_csv_and_summary(tmp_path: Path) -> None:
+    bot_path = tmp_path / "passive_bot.py"
+    bot_path.write_text(
+        """
+from __future__ import annotations
+
+try:
+    from datamodel import Order
+except ModuleNotFoundError:
+    from trader_factory.core.datamodel import Order
+
+
+class Trader:
+    def run(self, state):
+        return {"ALPHA": [Order("ALPHA", 100, 1)]}, 0, ""
+""".strip()
+        + "\n"
+    )
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "prices_round_test_day_0.csv").write_text(
+        "\n".join(
+            [
+                "day;timestamp;product;bid_price_1;bid_volume_1;bid_price_2;bid_volume_2;bid_price_3;bid_volume_3;ask_price_1;ask_volume_1;ask_price_2;ask_volume_2;ask_price_3;ask_volume_3;mid_price;profit_and_loss",
+                plain_price_row(
+                    day=0,
+                    timestamp=0,
+                    product="ALPHA",
+                    bid_price=99,
+                    bid_volume=5,
+                    ask_price=101,
+                    ask_volume=5,
+                    mid_price=100.0,
+                ),
+                plain_price_row(
+                    day=0,
+                    timestamp=100,
+                    product="ALPHA",
+                    bid_price=99,
+                    bid_volume=5,
+                    ask_price=101,
+                    ask_volume=5,
+                    mid_price=100.0,
+                ),
+            ]
+        )
+        + "\n"
+    )
+    (data_dir / "trades_round_test_day_0.csv").write_text(
+        "\n".join(
+            [
+                "timestamp;symbol;price;quantity;buyer;seller",
+                "100;ALPHA;100;1;;",
+            ]
+        )
+        + "\n"
+    )
+
+    result = run_deterministic(
+        bot_path,
+        day=0,
+        output_dir=tmp_path / "out",
+        data_root=data_dir,
+        dataset_tag="round_test",
+    )
+
+    fills_lines = result.fills_path.read_text().strip().splitlines()
+    summary = result.summary_path.read_text()
+    step_rows = result.step_log_path.read_text().strip().splitlines()
+
+    assert len(fills_lines) == 2
+    assert "passive_resting_fill" in fills_lines[1]
+    assert "Total fills: 1" in summary
+    assert "Passive fills: 1" in summary
+    assert "Aggressive fills: 0" in summary
+    assert step_rows[-1].split(",")[4] == "1"

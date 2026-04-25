@@ -24,7 +24,7 @@ from trader_factory.official import (
     run_imc_prosperity_submission,
     run_imc_prosperity_workflow,
 )
-from trader_factory.optimization import run_cmaes
+from trader_factory.optimization import run_cmaes, run_maf_analysis
 from trader_factory.probes import PROBE_LIBRARY, scaffold_probe_workspace
 from trader_factory.viewer import run_viewer_server
 from trader_factory.workflows import (
@@ -126,6 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
     cmaes.add_argument("--parents", type=int, default=None, help="Optional parent-count override.")
     cmaes.add_argument("--sigma0", type=float, default=None, help="Optional initial sigma override.")
     cmaes.add_argument("--seed", type=int, default=None, help="Optional random-seed override.")
+
+    maf = subparsers.add_parser(
+        "maf-bid",
+        help="Estimate value of Round 2 extra market access and optimise the MAF bid.",
+    )
+    maf.add_argument("config", type=Path, help="Path to the MAF analysis JSON config.")
+    maf.add_argument("--output-dir", type=Path, default=None, help="Optional output directory override.")
 
     probe = subparsers.add_parser("probe-scaffold", help="Scaffold a research probe workspace from a baseline bot.")
     probe.add_argument("kind", choices=sorted(PROBE_LIBRARY), help="Probe kind to scaffold.")
@@ -496,6 +503,16 @@ def main() -> None:
         print(f"Report: {result.report_path}")
         print(f"Best objective: {result.best_objective}")
         print(f"Best average: {result.best_average}")
+        return
+
+    if args.command == "maf-bid":
+        result = run_maf_analysis(args.config, output_dir=args.output_dir)
+        print(f"Output dir:       {result.output_dir}")
+        print(f"Report:           {result.report_path}")
+        print(f"JSON:             {result.json_path}")
+        print(f"V (local):        {result.V_local:.2f}")
+        print(f"V (official est): {result.V_official:.2f}")
+        print(f"Recommended bid:  {result.recommended_bid:.0f}")
         return
 
     if args.command == "probe-scaffold":

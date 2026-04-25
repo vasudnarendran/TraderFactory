@@ -168,8 +168,365 @@ def _prune_empty(value: Any) -> Any:
     return value
 
 
-def _brief_product_from_spec_product(product: dict[str, Any]) -> dict[str, Any]:
+CHECKLIST_STATUS_LEGEND = ["todo", "in_progress", "done", "blocked", "n/a"]
+
+
+def _checklist_item(
+    item_id: str,
+    *,
+    prompt: str,
+    why_it_matters: str,
+    target_fields: list[str],
+    sources_to_check: list[str],
+) -> dict[str, Any]:
     return {
+        "id": item_id,
+        "prompt": prompt,
+        "why_it_matters": why_it_matters,
+        "target_fields": target_fields,
+        "sources_to_check": sources_to_check,
+        "status": "todo",
+        "evidence": [],
+        "notes": "",
+    }
+
+
+def _mechanic_set(product: dict[str, Any]) -> set[str]:
+    return set(_clean_list(product.get("mechanic_hypotheses") or product.get("mechanics")))
+
+
+def _render_product_opening_checklist(product: dict[str, Any]) -> dict[str, Any]:
+    symbol = _clean_text(product.get("symbol")) or "PRODUCT"
+    mechanics = _mechanic_set(product)
+
+    required_now = [
+        _checklist_item(
+            "identity_limits_tick",
+            prompt=f"Confirm the exact official identity for `{symbol}` and replace any placeholders in symbol, position limit, and tick size.",
+            why_it_matters="Sizing, quoting, and validation all fail if the product identity layer is wrong.",
+            target_fields=["symbol", "position_limit", "tick_size"],
+            sources_to_check=["official challenge page", "round brief", "data capsule"],
+        ),
+        _checklist_item(
+            "price_regime",
+            prompt=f"Classify whether `{symbol}` behaves as anchored, mixed, linked, derivative, auction, or another explicit regime.",
+            why_it_matters="The price regime decides which strategy families and fair-value models are even valid.",
+            target_fields=["price_regime", "mechanic_hypotheses", "unknown_mechanics"],
+            sources_to_check=["round brief", "team notes", "early replay observations"],
+        ),
+        _checklist_item(
+            "execution_style",
+            prompt=f"Mark whether `{symbol}` is mostly passive, mostly aggressive, or mixed in practice, and only keep hypotheses you can defend.",
+            why_it_matters="Execution transfer often breaks before fair-value logic does, so this needs an explicit assumption.",
+            target_fields=["execution_style", "notes", "special_rules"],
+            sources_to_check=["round brief", "official logs", "probe results"],
+        ),
+        _checklist_item(
+            "observable_inputs",
+            prompt=f"Capture every machine-readable input that `{symbol}` depends on, including observations, signals, participants, and linked products.",
+            why_it_matters="If the observable contract is incomplete, the generated trader will optimize around the wrong state inputs.",
+            target_fields=[
+                "observations",
+                "observation_channels",
+                "related_products_hint",
+                "signal_source_hint",
+                "source_notes",
+            ],
+            sources_to_check=["round brief", "data capsule", "replay logs"],
+        ),
+        _checklist_item(
+            "unknowns_and_blockers",
+            prompt=f"Write what is still unknown about `{symbol}` instead of smoothing it over with guessed mechanics.",
+            why_it_matters="Unknowns belong in the intake layer so generation and optimization do not overcommit to a false model.",
+            target_fields=["open_questions", "unknown_mechanics", "notes"],
+            sources_to_check=["team discussion", "brief ambiguities", "replay disagreements"],
+        ),
+    ]
+
+    nice_to_have = [
+        _checklist_item(
+            "replay_signatures",
+            prompt=f"Record any early replay or official-log signatures for `{symbol}` that look behaviorally important.",
+            why_it_matters="Concrete signatures help later probes and diagnostics focus on the real transfer boundary.",
+            target_fields=["notes", "source_notes", "special_rules"],
+            sources_to_check=["deterministic replay", "official logs", "probe reports"],
+        ),
+        _checklist_item(
+            "promotion_risks",
+            prompt=f"Call out the biggest promotion risks for `{symbol}` before a production candidate is generated.",
+            why_it_matters="This keeps the factory honest about what still needs research versus what is ready for development mode.",
+            target_fields=["open_questions", "special_rules", "notes"],
+            sources_to_check=["validation findings", "team review", "probe results"],
+        ),
+    ]
+
+    if mechanics & {"option", "derivative", "expiry"}:
+        required_now.append(
+            _checklist_item(
+                "derivative_contract",
+                prompt=f"Fill the derivative contract for `{symbol}`: underlying, payoff type, strike grid, expiry timing, and settlement convention.",
+                why_it_matters="Derivative pricing and hedging logic are meaningless without the contract terms and settlement rule.",
+                target_fields=[
+                    "derivative_contract.underlying",
+                    "derivative_contract.option_kind",
+                    "derivative_contract.strike",
+                    "derivative_contract.time_to_expiry_years",
+                    "derivative_contract.expiry_style",
+                    "special_rules",
+                ],
+                sources_to_check=["round brief", "challenge page", "data capsule"],
+            )
+        )
+
+    if mechanics & {"basket", "pair_linked", "spread_relationship"}:
+        required_now.append(
+            _checklist_item(
+                "linkage_definition",
+                prompt=f"State exactly how `{symbol}` links to other products, including weights, hedge ratios, offsets, or allowed fallbacks.",
+                why_it_matters="Linked-product logic fails quickly when the relationship equation is only described informally.",
+                target_fields=[
+                    "related_products_hint",
+                    "relationship_style_hint",
+                    "basket_definition",
+                    "open_questions",
+                ],
+                sources_to_check=["round brief", "data capsule", "team notes"],
+            )
+        )
+
+    if mechanics & {"external_signal"}:
+        required_now.append(
+            _checklist_item(
+                "signal_contract",
+                prompt=f"Capture the signal contract for `{symbol}`: source key, units, latency, staleness handling, and how the signal should affect fair value or aggression.",
+                why_it_matters="Signal sleeves are usually dormant or harmful if the signal semantics are not explicit.",
+                target_fields=[
+                    "signal_source_hint",
+                    "observation_channels",
+                    "signal_rule.source_key",
+                    "signal_rule.latency_hint",
+                    "signal_rule.staleness_limit",
+                    "signal_rule.interpretation_mode",
+                ],
+                sources_to_check=["round brief", "official logs", "replay observations"],
+            )
+        )
+
+    if mechanics & {"named_participant", "flow_following", "informed_trader"}:
+        required_now.append(
+            _checklist_item(
+                "participant_contract",
+                prompt=f"Document how participant identity appears for `{symbol}` and whether the intended reaction is follow, fade, or filtered observation.",
+                why_it_matters="Participant sleeves are extremely sensitive to identity encoding and horizon assumptions.",
+                target_fields=[
+                    "participant_rule.tracked_participants",
+                    "participant_rule.follow_mode",
+                    "participant_rule.participant_weights",
+                    "participant_rule.signal_horizon",
+                ],
+                sources_to_check=["round brief", "official logs", "team notes"],
+            )
+        )
+
+    if mechanics & {"conversion", "transport"}:
+        required_now.append(
+            _checklist_item(
+                "conversion_contract",
+                prompt=f"Fill the conversion economics for `{symbol}` including source or target product, ratio, fees, delays, lot size, and whether conversion is actionable or informational only.",
+                why_it_matters="Conversion edge depends on economics and timing, not just the existence of another price.",
+                target_fields=[
+                    "source_product_hint",
+                    "target_product_hint",
+                    "conversion_rule.source_product",
+                    "conversion_rule.target_product",
+                    "conversion_rule.ratio",
+                    "conversion_rule.fee",
+                    "conversion_rule.delay_steps",
+                    "conversion_rule.lot_size",
+                ],
+                sources_to_check=["round brief", "challenge page", "official logs"],
+            )
+        )
+
+    if mechanics & {"auction"}:
+        required_now.append(
+            _checklist_item(
+                "auction_contract",
+                prompt=f"Capture the auction schedule and visibility for `{symbol}`, including cutoffs, indicative data, and clearing rule.",
+                why_it_matters="Auction logic depends on timing windows and visible state that continuous-trading code cannot infer on its own.",
+                target_fields=[
+                    "auction_rule.schedule",
+                    "auction_rule.clearing_rule",
+                    "auction_rule.prep_window",
+                    "auction_rule.submission_window",
+                    "auction_rule.visibility",
+                ],
+                sources_to_check=["round brief", "challenge page", "official logs"],
+            )
+        )
+
+    return {
+        "objective": f"Capture the minimum defensible structure for `{symbol}` before generation or optimization.",
+        "status_legend": list(CHECKLIST_STATUS_LEGEND),
+        "required_now": required_now,
+        "nice_to_have": nice_to_have,
+    }
+
+
+def _render_round_opening_checklist(profile: str, products: list[dict[str, Any]]) -> dict[str, Any]:
+    product_mechanics: set[str] = set()
+    for product in products:
+        product_mechanics.update(_mechanic_set(product))
+
+    required_now = [
+        _checklist_item(
+            "capture_primary_sources",
+            prompt="List every primary source used for the round intake, and keep the raw copied brief excerpt close to the structured interpretation.",
+            why_it_matters="Source traceability makes later extraction, review, and disagreement resolution much faster.",
+            target_fields=["sources", "raw_brief_excerpt", "summary"],
+            sources_to_check=["official challenge page", "copied rules text", "screenshots", "team notes"],
+        ),
+        _checklist_item(
+            "confirm_products_limits_ticks",
+            prompt="Replace placeholder products with the exact official symbols, position limits, and tick sizes for the full round.",
+            why_it_matters="This is the hard identity layer that all downstream sizing, validation, and generation depend on.",
+            target_fields=["products[].symbol", "products[].position_limit", "products[].tick_size"],
+            sources_to_check=["challenge page", "data capsule", "round brief"],
+        ),
+        _checklist_item(
+            "classify_core_mechanics",
+            prompt="Assign only the mechanic labels that are explicitly supported, and push anything unresolved into unknown mechanics or open questions.",
+            why_it_matters="The factory should optimize around explicit structure, not around silent guesses.",
+            target_fields=[
+                "mechanic_notes",
+                "products[].mechanic_hypotheses",
+                "products[].unknown_mechanics",
+                "products[].open_questions",
+            ],
+            sources_to_check=["round brief", "team discussion", "early replay observations"],
+        ),
+        _checklist_item(
+            "map_structural_dependencies",
+            prompt="Capture every cross-product dependency or special mechanic using typed fields first, then helper hints, then notes as a last resort.",
+            why_it_matters="Typed structure is what allows TraderFactory to pick the right generators, validators, and research probes.",
+            target_fields=[
+                "relationships",
+                "products[].derivative_contract",
+                "products[].basket_definition",
+                "products[].conversion_rule",
+                "products[].signal_rule",
+                "products[].participant_rule",
+                "products[].auction_rule",
+            ],
+            sources_to_check=["round brief", "data capsule", "official logs"],
+        ),
+        _checklist_item(
+            "capture_blockers_and_research_goals",
+            prompt="Write the unknowns that still block safe generation, optimization, or promotion, and turn them into explicit research goals.",
+            why_it_matters="This is the boundary between development mode and research mode.",
+            target_fields=["constraints", "open_questions", "unknown_mechanics", "research_goals"],
+            sources_to_check=["team review", "validation output", "probe findings"],
+        ),
+    ]
+
+    nice_to_have = [
+        _checklist_item(
+            "observation_contract_details",
+            prompt="Document exact feed keys, units, latency, and staleness behavior once replay or official logs expose them.",
+            why_it_matters="The more explicit the state contract is, the less reasoning burden falls on the agent later.",
+            target_fields=[
+                "products[].observation_channels",
+                "products[].signal_rule",
+                "products[].participant_rule",
+            ],
+            sources_to_check=["replay logs", "official logs", "team notes"],
+        ),
+        _checklist_item(
+            "execution_transfer_hypotheses",
+            prompt="Record execution hypotheses that still need research, but label them as hypotheses rather than facts.",
+            why_it_matters="This keeps simulator-behavior uncertainty separated from structural round understanding.",
+            target_fields=["special_rules", "unknown_mechanics", "products[].notes"],
+            sources_to_check=["official submissions", "probe results", "log analysis"],
+        ),
+    ]
+
+    if product_mechanics & {"option", "derivative", "expiry"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_derivative_settlement",
+                prompt="Confirm whether derivative products use vanilla settlement, special payoff transforms, or round-specific expiry handling.",
+                why_it_matters="Derivative generation should not proceed off a guessed settlement model.",
+                target_fields=["products[].derivative_contract", "special_rules", "constraints"],
+                sources_to_check=["round brief", "challenge page", "data capsule"],
+            )
+        )
+
+    if product_mechanics & {"basket", "pair_linked", "spread_relationship"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_linkage_equations",
+                prompt="Confirm whether linked products depend on explicit weights, spreads, baskets, or a softer relative-value relationship.",
+                why_it_matters="Relative-value logic needs a defensible structure before optimization can search around it.",
+                target_fields=["relationships", "products[].basket_definition", "products[].related_products_hint"],
+                sources_to_check=["round brief", "data capsule", "team notes"],
+            )
+        )
+
+    if product_mechanics & {"external_signal"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_signal_feed_contract",
+                prompt="Confirm which observation keys exist, what they mean, and how stale or lagged signal data should be interpreted.",
+                why_it_matters="Signal-based sleeves often fail because the feed contract is only half specified.",
+                target_fields=["products[].observation_channels", "products[].signal_rule", "products[].signal_source_hint"],
+                sources_to_check=["round brief", "official logs", "replay observations"],
+            )
+        )
+
+    if product_mechanics & {"named_participant", "flow_following", "informed_trader"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_participant_identity_contract",
+                prompt="Confirm whether participant identity is visible, stable, anonymized, delayed, or partially observable.",
+                why_it_matters="Participant-flow logic is only valid if the identity contract matches what the simulator actually exposes.",
+                target_fields=["products[].participant_rule", "open_questions", "special_rules"],
+                sources_to_check=["round brief", "official logs", "team notes"],
+            )
+        )
+
+    if product_mechanics & {"conversion", "transport"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_conversion_economics",
+                prompt="Confirm whether conversion is tradable or only observational, and capture all fees, delays, ratios, and venue differences.",
+                why_it_matters="Conversion models are mostly economics and timing; missing one term can invalidate the entire edge.",
+                target_fields=["products[].conversion_rule", "relationships", "constraints"],
+                sources_to_check=["round brief", "challenge page", "official logs"],
+            )
+        )
+
+    if product_mechanics & {"auction"}:
+        required_now.append(
+            _checklist_item(
+                "confirm_auction_windows",
+                prompt="Confirm the full auction workflow, including preparation windows, submission cutoffs, visible imbalance data, and clearing rule.",
+                why_it_matters="Auction strategies require a time-structured state model, not just another market-making sleeve.",
+                target_fields=["products[].auction_rule", "constraints", "special_rules"],
+                sources_to_check=["round brief", "challenge page", "official logs"],
+            )
+        )
+
+    return {
+        "profile": profile,
+        "objective": "Collect the minimum round-opening facts that make the generated spec defensible and auditable.",
+        "status_legend": list(CHECKLIST_STATUS_LEGEND),
+        "required_now": required_now,
+        "nice_to_have": nice_to_have,
+    }
+
+
+def _brief_product_from_spec_product(product: dict[str, Any]) -> dict[str, Any]:
+    brief_product = {
         "symbol": product.get("symbol", ""),
         "position_limit": product.get("position_limit", 0),
         "tick_size": product.get("tick_size", 1.0),
@@ -198,6 +555,8 @@ def _brief_product_from_spec_product(product: dict[str, Any]) -> dict[str, Any]:
         "source_notes": [],
         "custom_fields": dict(product.get("custom_fields", {})),
     }
+    brief_product["product_opening_checklist"] = _render_product_opening_checklist(brief_product)
+    return brief_product
 
 
 def render_round_brief_template(
@@ -211,6 +570,7 @@ def render_round_brief_template(
         competition_name=competition_name,
         round_name=round_name,
     )
+    products = [_brief_product_from_spec_product(product) for product in base_spec.get("products", [])]
     return {
         "competition_name": base_spec["name"],
         "round_name": base_spec["round_name"],
@@ -218,8 +578,9 @@ def render_round_brief_template(
         "summary": base_spec.get("description", ""),
         "sources": [],
         "raw_brief_excerpt": "",
+        "round_opening_checklist": _render_round_opening_checklist(profile, products),
         "mechanic_notes": list(base_spec.get("mechanics", [])),
-        "products": [_brief_product_from_spec_product(product) for product in base_spec.get("products", [])],
+        "products": products,
         "relationships": list(base_spec.get("relationships", [])),
         "special_rules": list(base_spec.get("special_rules", [])),
         "constraints": list(base_spec.get("constraints", [])),
@@ -635,20 +996,22 @@ def _render_intake_workspace_readme(profile: str) -> str:
         "## Workflow",
         "",
         "1. Paste the raw round brief into `raw_brief.md`.",
-        "2. Fill `round_brief.json` with concrete facts, helper hints, mechanic hypotheses, and open questions.",
-        "3. Regenerate the spec:",
+        "2. Work through `round_opening_checklist` and each product's `product_opening_checklist` inside `round_brief.json`.",
+        "3. Fill `round_brief.json` with concrete facts, helper hints, mechanic hypotheses, and open questions.",
+        "4. Mark checklist items as `done`, `blocked`, or `n/a` as evidence becomes available.",
+        "5. Regenerate the spec:",
         "",
         "```bash",
         "python3 -m trader_factory.cli brief-to-spec ./round_brief.json --output ./spec.json --report-output ./brief_extraction.md",
         "```",
         "",
-        "4. Validate the spec:",
+        "6. Validate the spec:",
         "",
         "```bash",
         "python3 -m trader_factory.cli validate-spec ./spec.json",
         "```",
         "",
-        "5. Scaffold only after blocked findings are fixed:",
+        "7. Scaffold only after blocked findings are fixed:",
         "",
         "```bash",
         "python3 -m trader_factory.cli scaffold-project ./spec.json",

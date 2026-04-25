@@ -72,9 +72,13 @@ def _python_literal(value: Any) -> str:
     if isinstance(value, (int, float)):
         return repr(value)
     if isinstance(value, list):
-        return json.dumps(value)
+        rendered = ", ".join(_python_literal(item) for item in value)
+        return f"[{rendered}]"
     if isinstance(value, dict):
-        return json.dumps(value, indent=2)
+        if not value:
+            return "{}"
+        items = ", ".join(f"{json.dumps(str(key))}: {_python_literal(item)}" for key, item in value.items())
+        return f"{{{items}}}"
     raise TypeError(f"Unsupported literal value: {value!r}")
 
 
@@ -239,29 +243,29 @@ def _render_params(spec: CompetitionSpec) -> str:
             )
         lines += [
             f'    "{product.symbol}": {{',
-            f'        "tick_size": {product.tick_size},',
-            f'        "price_regime": "{product.price_regime}",',
-            f'        "execution_style": "{product.execution_style}",',
-            f'        "mechanics": {json.dumps(interpretation.recognized_mechanics)},',
-            f'        "unknown_mechanics": {json.dumps(interpretation.unknown_mechanics)},',
-            f'        "observations": {json.dumps(product.observations)},',
-            f'        "observation_channels": {json.dumps(observation_channels, sort_keys=True)},',
-            f'        "basket_definition": {json.dumps(basket_definition, sort_keys=True)},',
-            f'        "participant_rule": {json.dumps(participant_rule, sort_keys=True)},',
-            f'        "signal_rule": {json.dumps(signal_rule, sort_keys=True)},',
-            f'        "derivative_contract": {json.dumps(derivative_contract, sort_keys=True)},',
-            f'        "conversion_rule": {json.dumps(conversion_rule, sort_keys=True)},',
-            f'        "auction_rule": {json.dumps(auction_rule, sort_keys=True)},',
-            f'        "related_products": {json.dumps(interpretation.related_products)},',
-            f'        "relationship_details": {json.dumps(relationship_details, sort_keys=True)},',
-            f'        "special_rules": {json.dumps(interpretation.special_rules)},',
-            f'        "open_questions": {json.dumps(interpretation.open_questions)},',
-            f'        "custom_fields": {json.dumps(product.custom_fields, sort_keys=True)},',
-            f'        "recommended_capabilities": {json.dumps(capabilities)},',
-            f'        "generated_archetype": "{archetype}",',
-            f'        "fallback_mode": "{interpretation.fallback_mode}",',
-            f'        "research_triggers": {json.dumps(interpretation.research_triggers)},',
-            f'        "intake_gaps": {json.dumps(interpretation.intake_gaps)},',
+            f'        "tick_size": {_python_literal(product.tick_size)},',
+            f'        "price_regime": {_python_literal(product.price_regime)},',
+            f'        "execution_style": {_python_literal(product.execution_style)},',
+            f'        "mechanics": {_python_literal(interpretation.recognized_mechanics)},',
+            f'        "unknown_mechanics": {_python_literal(interpretation.unknown_mechanics)},',
+            f'        "observations": {_python_literal(product.observations)},',
+            f'        "observation_channels": {_python_literal(observation_channels)},',
+            f'        "basket_definition": {_python_literal(basket_definition)},',
+            f'        "participant_rule": {_python_literal(participant_rule)},',
+            f'        "signal_rule": {_python_literal(signal_rule)},',
+            f'        "derivative_contract": {_python_literal(derivative_contract)},',
+            f'        "conversion_rule": {_python_literal(conversion_rule)},',
+            f'        "auction_rule": {_python_literal(auction_rule)},',
+            f'        "related_products": {_python_literal(interpretation.related_products)},',
+            f'        "relationship_details": {_python_literal(relationship_details)},',
+            f'        "special_rules": {_python_literal(interpretation.special_rules)},',
+            f'        "open_questions": {_python_literal(interpretation.open_questions)},',
+            f'        "custom_fields": {_python_literal(product.custom_fields)},',
+            f'        "recommended_capabilities": {_python_literal(capabilities)},',
+            f'        "generated_archetype": {_python_literal(archetype)},',
+            f'        "fallback_mode": {_python_literal(interpretation.fallback_mode)},',
+            f'        "research_triggers": {_python_literal(interpretation.research_triggers)},',
+            f'        "intake_gaps": {_python_literal(interpretation.intake_gaps)},',
             "    },",
         ]
     lines += [

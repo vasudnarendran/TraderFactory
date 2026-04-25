@@ -1,0 +1,68 @@
+{
+  "name": "cmaes_v14_run1",
+  "source_bot": "generated/optimization/round2_v14/trader_v14.py",
+  "output_prefix": "round2_v14",
+  "output_dir": "generated/optimization/round2_v14",
+  "dataset_tag": "round_2",
+  "default_dict_block": "DEFAULT_ASH_PARAMS",
+  "baselines": {
+    "-1": 99885.0,
+    "0": 99624.0,
+    "1": 100396.0
+  },
+  "search": {
+    "max_iter": 45,
+    "population": 14,
+    "parents": 7,
+    "sigma0": 0.22,
+    "seed": 7,
+    "timeout_seconds": 120.0
+  },
+  "penalties": {
+    "regression": 1.5,
+    "imbalance": 0.5,
+    "drift": 0.0
+  },
+  "parameters": [
+    {
+      "name": "MARKOUT_ALPHA",
+      "lower": 0.06,
+      "upper": 0.40
+    },
+    {
+      "name": "SOFT_BAD_MARKOUT",
+      "lower": -0.90,
+      "upper": -0.10
+    },
+    {
+      "name": "HARD_BAD_MARKOUT",
+      "lower": -1.80,
+      "upper": -0.35
+    },
+    {
+      "name": "MARKOUT_EDGE_PENALTY",
+      "lower": 0.05,
+      "upper": 0.55
+    },
+    {
+      "name": "MARKOUT_SIZE_PENALTY",
+      "lower": 0.05,
+      "upper": 0.45
+    },
+    {
+      "name": "DISAGREE_STABLE_DAMP",
+      "lower": -0.30,
+      "upper": 0.50
+    },
+    {
+      "name": "DRIFT_PER_TIMESTAMP",
+      "lower": 0.0005,
+      "upper": 0.0040,
+      "location": {
+        "type": "dict_block",
+        "container": "DEFAULT_IPR_PARAMS",
+        "key": "DRIFT_PER_TIMESTAMP"
+      }
+    }
+  ]
+}

@@ -179,12 +179,13 @@ Spec convention for structural mechanics:
 Recommended intake flow:
 
 1. create an intake workspace or render a brief template
-2. fill the structured `round_brief.json`
-3. run `python3 -m trader_factory.cli brief-to-spec <round_brief.json> --output <spec.json> --report-output <brief_extraction.md>`
-4. inspect the extraction report so inferred fields stay explicit
-5. run `python3 -m trader_factory.cli validate-spec <spec.json>`
-6. fix blocked or high-value validation findings
-7. scaffold the project only after the spec is structurally coherent
+2. work through `round_opening_checklist` and each product's `product_opening_checklist`
+3. fill the structured `round_brief.json`
+4. run `python3 -m trader_factory.cli brief-to-spec <round_brief.json> --output <spec.json> --report-output <brief_extraction.md>`
+5. inspect the extraction report so inferred fields stay explicit
+6. run `python3 -m trader_factory.cli validate-spec <spec.json>`
+7. fix blocked or high-value validation findings
+8. scaffold the project only after the spec is structurally coherent
 
 ## Repo Philosophy
 

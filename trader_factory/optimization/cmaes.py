@@ -93,6 +93,7 @@ class CmaesConfig:
     output_dir: Path | None = None
     data_root: Path | None = None
     default_dict_block: str | None = None
+    dataset_tag: str | None = None
 
     @property
     def days(self) -> tuple[int, ...]:
@@ -165,6 +166,7 @@ class CmaesConfig:
             if payload.get("data_root")
             else None,
             default_dict_block=default_dict_block,
+            dataset_tag=payload.get("dataset_tag"),
         )
 
 
@@ -348,6 +350,8 @@ def _run_scores_for_params(
                 bot_path,
                 day=day,
                 output_dir=run_dir,
+                data_root=config.data_root,
+                dataset_tag=config.dataset_tag,
                 timeout_seconds=config.search.timeout_seconds,
                 check=True,
             )
@@ -625,6 +629,7 @@ def run_cmaes(
             output_dir=config.output_dir,
             data_root=config.data_root,
             default_dict_block=config.default_dict_block,
+            dataset_tag=config.dataset_tag,
         )
 
     final_output_dir = (

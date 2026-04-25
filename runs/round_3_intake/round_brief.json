@@ -1,0 +1,266 @@
+{
+  "competition_name": "Prosperity",
+  "round_name": "round_3",
+  "summary": "12 products: HYDROGEL_PACK (market-make), VELVETFRUIT_EXTRACT (underlying + delta-hedge), and a 10-strike European call options chain VEV_XXXX with strikes 4000-6500. Options settle on VELVETFRUIT_EXTRACT. Pre-round data covers days 0-2 of a 5-day round (T=5,4,3). Implied vol calibrated at sigma≈1.5%/day, stable across all strikes and days.",
+  "sources": [
+    "prices_round_3_day_0/1/2.csv — profiled all 12 products",
+    "trades_round_3_day_0/1/2.csv — scanned for bot patterns",
+    "La_trahison_des_images.png — round flavor art (Magritte, Ceci n'est pas une pipe)"
+  ],
+  "raw_brief_excerpt": "NOT YET AVAILABLE — fill when live round brief drops. Verify position limits, total days, and option settlement details.",
+
+  "round_structure": {
+    "total_trading_days": 5,
+    "days_in_preround_data": 3,
+    "data_days": [0, 1, 2],
+    "option_expiry": "end of day 4 (last trading day)",
+    "T_at_day_0": 5.0,
+    "T_at_day_2": 3.0,
+    "T_formula": "T_rem = TOTAL_DAYS - day - timestamp / 999900",
+    "note": "T=5 hypothesis confirmed by stable IVs across days. T=3 hypothesis ruled out — would give rising IV which is unphysical in stable market."
+  },
+
+  "calibration": {
+    "sigma_per_day": 0.015,
+    "sigma_pct": "1.5%",
+    "calibrated_from": "VEV_5300, VEV_5200, VEV_5400 mid prices vs Black-Scholes with T=5,4,3",
+    "iv_by_strike_day0": {
+      "VEV_5000": "1.554%",
+      "VEV_5100": "1.571%",
+      "VEV_5200": "1.542%",
+      "VEV_5300": "1.542%",
+      "VEV_5400": "1.475%",
+      "VEV_5500": "1.583%"
+    },
+    "vol_smile": "essentially flat — max spread 0.1% across strikes. No material skew. Use constant sigma=0.015.",
+    "daily_vol_consistency": "IVs stable across days 0,1,2 confirming T=5,4,3 model"
+  },
+
+  "bots_and_npcs": {
+    "named_traders": "NONE visible in trades files — all buyer/seller fields empty",
+    "no_olivia": true,
+    "suspicious_bot": "Unknown bot simultaneously trades VEV_5400+VEV_5500+VEV_6000+VEV_6500 in same timestep, 3-5 lot bundles, sporadically throughout day. Prices vary with underlying. Not a fixed-price bot — tracks intrinsic.",
+    "vev_6000_6500_trades": "price=0.0 in trades (book shows 0.5 bid/ask). Bot probably selling these at 0. No exploitation opportunity — worthless options."
+  },
+
+  "products": [
+    {
+      "symbol": "HYDROGEL_PACK",
+      "position_limit": 50,
+      "position_limit_confidence": "ESTIMATE — verify from round brief",
+      "price_regime": "mean-reverting",
+      "execution_style": "mixed",
+      "mechanic_hypotheses": ["market_making"],
+      "stats": {
+        "price_range": "9891-10079",
+        "mean_price": 9990,
+        "spread_mean": 15.7,
+        "spread_median": 16,
+        "avg_bid_vol": 12.4,
+        "lag1_autocorr": -0.13,
+        "drift_snr": "low — stays near 10000"
+      },
+      "strategy": "Standard market-maker: blended_mid fair value + Take→Clear→Make. Identical in structure to ASH_COATED_OSMIUM from Round 2.",
+      "notes": "Spread=16 with avg vol=12 suggests limit ~50. Very similar to prior mean-reverting products."
+    },
+    {
+      "symbol": "VELVETFRUIT_EXTRACT",
+      "position_limit": 150,
+      "position_limit_confidence": "ESTIMATE — verify from round brief",
+      "price_regime": "mean-reverting",
+      "execution_style": "mixed",
+      "mechanic_hypotheses": ["market_making", "options_underlying"],
+      "related_products_hint": ["VEV_4000", "VEV_4500", "VEV_5000", "VEV_5100", "VEV_5200", "VEV_5300", "VEV_5400", "VEV_5500", "VEV_6000", "VEV_6500"],
+      "stats": {
+        "price_range": "5198-5300",
+        "mean_price": 5250,
+        "spread_mean": 5.0,
+        "avg_bid_vol": 37.8,
+        "lag1_autocorr": -0.16
+      },
+      "strategy": "Market-make for standalone profit AND provide delta-hedge capacity for option positions. Hedge 50% of net option delta via VFE.",
+      "notes": "Tightest spread of all products (mean=5). Most liquid. Central to options strategy — VEV_XXXX prices are European call options on this asset."
+    },
+    {
+      "symbol": "VEV_4000",
+      "position_limit": 200,
+      "position_limit_confidence": "ESTIMATE",
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["deep_itm_call"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 4000,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 1246, "intrinsic_day0": 1246, "time_value_day0": 0, "spread_mean": 20.8, "avg_vol": 10.9},
+      "strategy": "SKIP — deep ITM, price = intrinsic. Wide spread (21). Tracks VFE exactly with delta≈1. No edge in market-making. Monitor only.",
+      "notes": "VEV_4000 price = VELVETFRUIT_EXTRACT - 4000 always. Wide 21-point spread makes market-making unprofitable."
+    },
+    {
+      "symbol": "VEV_4500",
+      "position_limit": 200,
+      "position_limit_confidence": "ESTIMATE",
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["deep_itm_call"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 4500,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 746, "intrinsic_day0": 746, "spread_mean": 15.8},
+      "strategy": "SKIP — same as VEV_4000. Deep ITM, no time value, wide spread.",
+      "notes": ""
+    },
+    {
+      "symbol": "VEV_5000",
+      "position_limit": 100,
+      "position_limit_confidence": "ESTIMATE",
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["near_itm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5000,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 253, "intrinsic_day0": 246, "time_value_day0": 7, "spread_mean": 6.0, "avg_vol": 15.3, "implied_vol": "1.554%"},
+      "strategy": "TRADE — BS pricing with sigma=0.015, T_rem tracked. Take→Clear→Make with OPT_TAKE_EDGE=1.5, OPT_MAKE_SPREAD=1.5. Small time value but meaningful.",
+      "notes": "Tighter spread (6) than deep ITM. Some time value. Active trading is feasible."
+    },
+    {
+      "symbol": "VEV_5100",
+      "position_limit": 100,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["near_itm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5100,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 168, "intrinsic_day0": 146, "time_value_day0": 22, "spread_mean": 4.3, "avg_vol": 19.2, "implied_vol": "1.571%"},
+      "strategy": "TRADE — best spread/value combination. Spread=4, meaningful time value, liquid book.",
+      "notes": ""
+    },
+    {
+      "symbol": "VEV_5200",
+      "position_limit": 100,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["near_atm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5200,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 97, "intrinsic_day0": 46, "time_value_day0": 51, "spread_mean": 2.9, "avg_vol": 22.5, "implied_vol": "1.542%"},
+      "strategy": "TRADE — near-ATM, tightest spread (3), most liquid options product. Primary calibration source for sigma.",
+      "notes": "Best IV calibration source due to dominant time value and high liquidity."
+    },
+    {
+      "symbol": "VEV_5300",
+      "position_limit": 100,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["near_atm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5300,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 49, "intrinsic_day0": 0, "time_value_day0": 49, "spread_mean": 2.1, "avg_vol": 20.2, "implied_vol": "1.542%"},
+      "strategy": "TRADE + PRIMARY CALIBRATION. Pure time value (OTM). Preferred sigma calibration target — no intrinsic contamination. Spread=2.",
+      "notes": "Primary sigma calibration strike. OTM so intrinsic=0, all price = time value. Most useful for clean IV calibration."
+    },
+    {
+      "symbol": "VEV_5400",
+      "position_limit": 100,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["otm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5400,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 18.5, "intrinsic_day0": 0, "time_value_day0": 18.5, "spread_mean": 1.4, "avg_vol": 21.7, "implied_vol": "1.475%"},
+      "strategy": "TRADE — pure time value, spread=1-2. Sensitive to T_remaining — high theta.",
+      "notes": "Traded in bundles by mystery bot along with VEV_5500/6000/6500. Bundle prices vary with underlying."
+    },
+    {
+      "symbol": "VEV_5500",
+      "position_limit": 100,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["otm_call", "bs_pricing"],
+      "derivative_contract": {
+        "type": "european_call",
+        "underlying": "VELVETFRUIT_EXTRACT",
+        "strike": 5500,
+        "expiry": "end of round (day 4)"
+      },
+      "stats": {"price_day0": 8.1, "intrinsic_day0": 0, "time_value_day0": 8.1, "spread_mean": 1.2, "avg_vol": 22.1, "implied_vol": "1.583%"},
+      "strategy": "TRADE — small absolute prices, spread=1. Position sizing critical — 1 tick = 12% of value.",
+      "notes": "Very small absolute time value. Min spread = 1 tick. Be careful with rounding in BS quote generation."
+    },
+    {
+      "symbol": "VEV_6000",
+      "position_limit": 50,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["worthless_option"],
+      "stats": {"price": 0.5, "all_days": "constant at 0.5", "in_trades": "price=0.0 — bot gives these away free"},
+      "strategy": "SKIP — deep OTM, spot=5250 vs strike=6000. Price pinned at 0.5 (minimum quote tick). No alpha.",
+      "notes": "VEV_6000 and VEV_6500 are both dead. Spot would need to rise >15% to reach intrinsic. Ignore."
+    },
+    {
+      "symbol": "VEV_6500",
+      "position_limit": 50,
+      "price_regime": "derivative",
+      "mechanic_hypotheses": ["worthless_option"],
+      "stats": {"price": 0.5, "all_days": "constant at 0.5"},
+      "strategy": "SKIP — same as VEV_6000. Worthless.",
+      "notes": ""
+    }
+  ],
+
+  "relationships": [
+    {
+      "type": "european_call_options_chain",
+      "underlying": "VELVETFRUIT_EXTRACT",
+      "derivatives": ["VEV_4000", "VEV_4500", "VEV_5000", "VEV_5100", "VEV_5200", "VEV_5300", "VEV_5400", "VEV_5500", "VEV_6000", "VEV_6500"],
+      "pricing_model": "Black-Scholes",
+      "sigma": 0.015,
+      "T_at_day_0": 5.0
+    }
+  ],
+
+  "open_questions": [
+    "CRITICAL: Exact position limits — all estimates until round brief arrives",
+    "CRITICAL: Total trading days — assumed 5, must verify from round brief",
+    "Are VEV options European or American? Data fits European; Magritte hint might suggest otherwise.",
+    "What is the exact option settlement price? Assumes final VELVETFRUIT_EXTRACT mid-price.",
+    "Is there conversion between options and underlying? No evidence in data.",
+    "Does VEV_4000/4500 have any market-making opportunity we're missing?",
+    "What causes the periodic simultaneous trades of VEV_5400/5500/6000/6500 — fixed bot? Is there a timing pattern to exploit?"
+  ],
+
+  "unknown_mechanics": [
+    "Option settlement mechanism (assume cash-settlement to intrinsic at expiry)",
+    "Whether any NPC will appear mid-round with named trader IDs",
+    "Whether VEV_6000/6500 have any special mechanic (e.g., barrier options)"
+  ],
+
+  "research_goals": [
+    "When round brief arrives: verify position limits for all 12 products immediately",
+    "When round begins: observe first 100 ticks to verify sigma still ≈0.015 and no structural surprise",
+    "Monitor IV calibration — if sigma starts drifting above 0.025 or below 0.01, something is wrong",
+    "Watch for any named NPC traders appearing in trades data",
+    "Check if VEV_4000/4500 wide spread is stable — if it narrows, market-making becomes viable"
+  ],
+
+  "bot_status": {
+    "v1": "generated/optimization/round3_v1/trader_v1.py",
+    "v1_summary": "HYDROGEL_PACK market-maker + VFE market-maker + options chain BS trading for VEV_5000-5500 + 50% delta hedge via VFE. Live sigma calibration from VEV_5300 with EMA smoothing. T_remaining tracked via day counter in traderData."
+  }
+}

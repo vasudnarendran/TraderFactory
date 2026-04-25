@@ -68,6 +68,24 @@ The intended meaning:
 
 This is the recommended bridge from raw brief text to validated machine-readable spec.
 
+The structured brief now also carries an explicit checklist layer:
+
+- `round_opening_checklist`: machine-readable round-level intake tasks with `required_now` and `nice_to_have` sections
+- `product_opening_checklist`: per-product intake tasks attached to each product entry
+
+Each checklist item includes:
+
+- `id`
+- `prompt`
+- `why_it_matters`
+- `target_fields`
+- `sources_to_check`
+- `status`
+- `evidence`
+- `notes`
+
+The intent is to move the highest-value round-opening questions into the JSON itself so a human or agent can work the intake systematically instead of relying on scattered docs.
+
 ## Helper Hints
 
 The structured brief now includes helper fields that sit between raw prose and fully typed schema blocks.
@@ -82,6 +100,11 @@ Useful product-level helpers:
 - `signal_source_hint`
 - `raw_brief_excerpt`
 - `source_notes`
+
+The checklist layer and the helper-hint layer serve different purposes:
+
+- checklists tell you what to collect next
+- helper hints give `brief-to-spec` a conservative bridge from prose into typed fields
 
 These fields do not replace typed schema blocks. They exist so `brief-to-spec` can conservatively fill obvious missing structure without making the agent hand-author every nested JSON field immediately.
 

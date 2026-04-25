@@ -1,0 +1,35 @@
+{
+  "name": "Prosperity",
+  "round_name": "round_3",
+  "description": "Generic intake template for a new round. Replace placeholder products and mechanics with the actual round brief.",
+  "products": [
+    {
+      "symbol": "PRODUCT_A",
+      "position_limit": 20,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": [
+        "market_making",
+        "inventory_sensitive"
+      ],
+      "notes": "Replace this placeholder with the first real product from the round brief."
+    },
+    {
+      "symbol": "PRODUCT_B",
+      "position_limit": 20,
+      "tick_size": 1.0,
+      "price_regime": "mixed",
+      "execution_style": "mixed",
+      "mechanics": [
+        "market_making",
+        "inventory_sensitive"
+      ],
+      "notes": "Replace this placeholder with the second real product from the round brief."
+    }
+  ],
+  "research_goals": [
+    "Keep unresolved mechanics explicit instead of guessing them away.",
+    "Run validate-spec before scaffolding or optimization."
+  ]
+}

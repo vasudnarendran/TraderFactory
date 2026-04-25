@@ -105,6 +105,15 @@ def parse_args() -> argparse.Namespace:
             "Required only if the data directory contains multiple datasets."
         ),
     )
+    parser.add_argument(
+        "--volume-multiplier",
+        type=float,
+        default=1.0,
+        help=(
+            "Scale all order book bid and ask quantities by this factor before simulation. "
+            "Use 1.25 to simulate the Round 2 +25%% extra market access. Default 1.0 (no scaling)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -262,6 +271,20 @@ class Fill:
     quantity: int
     fill_type: str
     source_order_price: int
+
+
+def fill_to_row(fill: Fill) -> Dict[str, object]:
+    return {
+        "day": fill.day,
+        "timestamp": fill.timestamp,
+        "abs_timestamp": fill.abs_timestamp,
+        "product": fill.product,
+        "side": fill.side,
+        "price": fill.price,
+        "quantity": fill.quantity,
+        "fill_type": fill.fill_type,
+        "source_order_price": fill.source_order_price,
+    }
 
 
 def detect_csv_delimiter(path: Path) -> str:
@@ -555,6 +578,14 @@ def build_observations(
     return ObservationClass(plain_values, converted)
 
 
+def scale_snapshot_volumes(prices_by_key: Dict, multiplier: float) -> None:
+    """Scale all bid/ask quantities in-place by multiplier. Models +N% extra market access."""
+    for product_snapshots in prices_by_key.values():
+        for snapshot in product_snapshots.values():
+            snapshot.bid_levels = [(p, max(1, round(v * multiplier))) for p, v in snapshot.bid_levels]
+            snapshot.ask_levels = [(p, max(1, round(v * multiplier))) for p, v in snapshot.ask_levels]
+
+
 def snapshot_to_order_depth(snapshot: Snapshot, OrderDepthClass):
     order_depth = OrderDepthClass()
     order_depth.buy_orders = {price: volume for price, volume in snapshot.bid_levels}
@@ -777,6 +808,9 @@ def main() -> None:
         dataset_tag,
         args.day,
     )
+    if args.volume_multiplier != 1.0:
+        scale_snapshot_volumes(prices_by_key, args.volume_multiplier)
+
     products = sorted(listings.keys())
 
     position = {product: 0 for product in products}
@@ -896,11 +930,11 @@ def main() -> None:
                 if remaining_qty > 0:
                     resting_price = int(order.price)
                     is_resting = False
-                    best_bid = snapshot.bid_levels[0][0]
-                    best_ask = snapshot.ask_levels[0][0]
-                    if side == "BUY" and resting_price < best_ask:
+                    best_bid = snapshot.bid_levels[0][0] if snapshot.bid_levels else None
+                    best_ask = snapshot.ask_levels[0][0] if snapshot.ask_levels else None
+                    if side == "BUY" and best_ask is not None and resting_price < best_ask:
                         is_resting = True
-                    if side == "SELL" and resting_price > best_bid:
+                    if side == "SELL" and best_bid is not None and resting_price > best_bid:
                         is_resting = True
                     if is_resting:
                         pending_orders[product].append(
@@ -949,13 +983,15 @@ def main() -> None:
         time_points.append(abs_timestamp)
         total_pnl_series.append(total_pnl)
 
+        all_step_fills = [*fills_between_steps, *step_fills]
+
         step_rows.append(
             {
                 "day": day,
                 "timestamp": timestamp,
                 "abs_timestamp": abs_timestamp,
                 "submitted_orders": sum(len(orders) for orders in orders_by_product.values()),
-                "executed_fills": len(step_fills),
+                "executed_fills": len(all_step_fills),
                 "pending_orders_next_step": sum(len(orders) for orders in pending_orders.values()),
                 "conversions": conversions,
                 "positions_total_abs": positions_total_abs,
@@ -965,20 +1001,8 @@ def main() -> None:
             }
         )
 
-        for fill in step_fills:
-            fill_rows.append(
-                {
-                    "day": fill.day,
-                    "timestamp": fill.timestamp,
-                    "abs_timestamp": fill.abs_timestamp,
-                    "product": fill.product,
-                    "side": fill.side,
-                    "price": fill.price,
-                    "quantity": fill.quantity,
-                    "fill_type": fill.fill_type,
-                    "source_order_price": fill.source_order_price,
-                }
-            )
+        for fill in all_step_fills:
+            fill_rows.append(fill_to_row(fill))
 
     write_csv(
         output_dir / "step_log.csv",
@@ -1033,10 +1057,12 @@ def main() -> None:
         f"Plain observation keys: {', '.join(sorted(plain_observation_keys)) or '(none)'}",
         f"Steps with conversion observations: {steps_with_conversion_observations}",
         f"Products with conversion observations: {', '.join(sorted(products_with_conversion_observations)) or '(none)'}",
-        f"Total fills: {len(fill_rows)}",
+        f"Total fills: {len(fills)}",
         f"Final total PnL: {total_pnl_series[-1]:.2f}" if total_pnl_series else "Final total PnL: 0.00",
         f"Best total PnL: {max(total_pnl_series):.2f}" if total_pnl_series else "Best total PnL: 0.00",
         f"Worst total PnL: {min(total_pnl_series):.2f}" if total_pnl_series else "Worst total PnL: 0.00",
+        f"Passive fills: {sum(1 for fill in fills if fill.fill_type == 'passive_resting_fill')}",
+        f"Aggressive fills: {sum(1 for fill in fills if fill.fill_type == 'aggressive_cross')}",
         "",
         "Per product final PnL:",
     ]
